@@ -41,7 +41,7 @@ O **SaúdeConecta** é uma plataforma de **agendamento inteligente e triagem ass
 
 | Nome | GitHub |
 |------|--------|
-| [Nome 1] | [@usuario1](https://github.com/usuario1) |
+|Maria Lina da Silva |[@Marialinaa](https://github.com/Marialinaa/Marialinaa) |
 | [Nome 2] | [@usuario2](https://github.com/usuario2) |
 | [Nome 3] | [@usuario3](https://github.com/usuario3) |
 | [Nome 4] | [@usuario4](https://github.com/usuario4) |
