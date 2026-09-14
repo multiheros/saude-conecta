@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaúdeConecta — Pitch de Concepção (GCC129)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    
+    * {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      box-sizing: border-box;
+    }
+    
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Animações suaves de transição */
+    .slide-enter {
+      animation: fadeInSlide 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes fadeInSlide {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.995);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+    }
+
+    .dark-glass {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between overflow-hidden select-none">
+
+  <!-- Top Bar: Info, Cronômetro de 5min e Navegação -->
+  <header class="w-full bg-slate-950/80 border-b border-slate-800 px-6 py-3 flex items-center justify-between z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 font-bold text-lg">
+        🏥
+      </div>
+      <div>
+        <h1 class="text-sm font-bold tracking-tight text-white flex items-center gap-2">
+          SaúdeConecta <span class="text-xs px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20 font-mono font-normal">GCC129 • Parte 1</span>
+        </h1>
+        <p class="text-xs text-slate-400">Startup de Sistema Distribuído • Apresentação de 5 Minutos</p>
+      </div>
+    </div>
+
+    <!-- Central Timer -->
+    <div class="flex items-center gap-4 bg-slate-900/90 border border-slate-800 rounded-full px-5 py-1.5 shadow-inner">
+      <div class="flex items-center gap-2">
+        <span id="timerStatusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span id="timerDisplay" class="font-mono text-sm font-bold text-emerald-400">05:00</span>
+      </div>
+      <div class="h-3 w-px bg-slate-800"></div>
+      <div class="flex items-center gap-1">
+        <button id="btnTimerToggle" title="Iniciar/Pausar (Espaço ou P)" class="text-xs px-2 py-1 rounded hover:bg-slate-800 text-slate-300 transition">
+          ▶ Iniciar
+        </button>
+        <button id="btnTimerReset" title="Resetar Timer (R)" class="text-xs px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition">
+          ↺ Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Slide Indicators & Controls -->
+    <div class="flex items-center gap-3">
+      <span id="speakerBadge" class="text-xs font-medium px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+        🗣️ Aluno 1 (0:00 - 1:40)
+      </span>
+      <div class="text-xs font-mono text-slate-400">
+        Slide <span id="currentSlideNum" class="text-white font-bold">1</span> de <span id="totalSlidesNum">8</span>
+      </div>
+      <div class="flex items-center gap-1 border-l border-slate-800 pl-3">
+        <button id="btnPrev" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition" title="Slide Anterior (Seta Esquerda)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <button id="btnNext" class="p-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition" title="Próximo Slide (Seta Direita / Espaço)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </button>
+        <button id="btnNotesToggle" class="ml-1 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Exibir Roteiro do Apresentador (N)">
+          📝
+        </button>
+        <button id="btnFullscreen" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Tela Cheia (F)">
+          ⛶
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Progress Bar do Pitch -->
+  <div class="w-full bg-slate-800 h-1 relative">
+    <div id="slideProgressBar" class="h-full bg-gradient-to-r from-teal-500 via-blue-500 to-indigo-500 transition-all duration-300" style="width: 12.5%;"></div>
+  </div>
+
+  <!-- Main Slide Canvas -->
+  <main class="flex-1 flex items-center justify-center p-6 relative overflow-hidden bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950">
+
+    <!-- SLIDE 1: Capa -->
+    <div class="slide slide-enter w-full max-w-5xl" data-slide="1" data-speaker="Aluno 1 (0:00 - 1:40)" data-time="0:00 - 0:25" data-notes="Boa tarde professor e colegas! Nós somos a SaúdeConecta. Apresentamos nossa proposta de startup distribuída para resolver a desumanização das filas da saúde pública no Brasil.">
+      <div class="text-center space-y-6">
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 text-sm font-medium">
+          <span class="w-2 h-2 rounded-full bg-teal-400 animate-ping"></span>
+          GCC129 — Sistemas Distribuídos • Trabalho Prático 2026/2
+        </div>
+
+        <div class="space-y-3">
+          <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight text-white">
+            Saúde<span class="text-teal-400">Conecta</span> 🏥
+          </h1>
+          <p class="text-xl md:text-2xl font-light text-slate-300 italic max-w-2xl mx-auto">
+            "Conectando comunidades à saúde que precisam"
+          </p>
+        </div>
+
+        <p class="text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          Plataforma distribuída de <strong class="text-white font-semibold">agendamento inteligente</strong> e <strong class="text-white font-semibold">triagem orientada por Inteligência Artificial</strong> para Unidades Básicas de Saúde do SUS.
+        </p>
+
+        <!-- Integrantes Cards (3 Integrantes) -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto pt-6">
+          <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 text-center">
+            <div class="text-xs text-teal-400 font-mono mb-1">Aluno 1 • Abertura & Dor</div>
+            <div class="text-sm font-semibold text-white">Jonathan Carvalho</div>
+            <div class="text-xs text-slate-400 font-mono">@multiheros</div>
+          </div>
+          <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 text-center">
+            <div class="text-xs text-teal-400 font-mono mb-1">Aluno 2 • Dados & Impacto</div>
+            <div class="text-sm font-semibold text-white">Maria Lina da Silva</div>
+            <div class="text-xs text-slate-400 font-mono">@Marialinaa</div>
+          </div>
+          <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 text-center">
+            <div class="text-xs text-teal-400 font-mono mb-1">Aluno 3 • Solução & Fecho</div>
+            <div class="text-sm font-semibold text-white">Matheus Gomes</div>
+            <div class="text-xs text-slate-400 font-mono">@MatheusssGM</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: O Problema Real -->
+    <div class="slide hidden w-full max-w-5xl" data-slide="2" data-speaker="Aluno 1 (0:00 - 1:40)" data-time="0:25 - 1:05" data-notes="Destacar a contradição: o SUS atende 150M de pessoas, mas 93,8% das UBS realizam agendamento puramente presencial segundo o Censo 2024. O paciente perde diária de trabalho só para tentar marcar.">
+      <div class="space-y-6">
+        <div>
+          <span class="text-xs font-mono tracking-wider uppercase text-teal-400 font-semibold">1. Contexto & Problema</span>
+          <h2 class="text-3xl md:text-4xl font-bold text-white mt-1">A Barreira na Porta de Entrada da Saúde Pública</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
+          <div class="md:col-span-7 bg-slate-800/50 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between space-y-4">
+            <div class="space-y-3">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 text-xs font-semibold">
+                🚨 O Paradoxo Atual
+              </div>
+              <h3 class="text-2xl font-bold text-white">
+                Por que cidadãos ainda enfrentam filas de madrugada para marcar consultas?
+              </h3>
+              <p class="text-slate-300 text-sm leading-relaxed">
+                Mais de <strong class="text-white">150 milhões de brasileiros</strong> dependem exclusivamente da rede pública de saúde. Apesar da evolução dos prontuários eletrônicos, o agendamento de consultas continua analógico, fragmentado e excludente.
+              </p>
+            </div>
+
+            <div class="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+              <div class="text-xs text-slate-400 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                <strong>Consequência imediata:</strong>
+              </div>
+              <p class="text-xs text-slate-300">
+                O usuário precisa se deslocar fisicamente de madrugada, perde jornada de trabalho e muitas vezes não consegue atendimento por esgotamento de senhas físicas.
+              </p>
+            </div>
+          </div>
+
+          <!-- Destaque Estatístico -->
+          <div class="md:col-span-5 bg-gradient-to-br from-rose-950/40 via-slate-800/80 to-slate-900 border border-rose-500/30 rounded-2xl p-6 flex flex-col justify-center text-center space-y-3">
+            <div class="text-6xl font-extrabold text-rose-400 tracking-tight font-mono">
+              93,8%
+            </div>
+            <h4 class="text-lg font-bold text-white">
+              Agendamento Estritamente Presencial
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Segundo o <strong>Censo Nacional das UBS (2024)</strong>, quase 94% das unidades básicas ainda exigem a presença física do cidadão no balcão para qualquer marcação.
+            </p>
+            <div class="pt-2">
+              <span class="text-[10px] text-slate-400 font-mono uppercase bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                Fonte: Censo UBS 2024 / RESBR / Ministério da Saúde
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Os Gargalos em Números -->
+    <div class="slide hidden w-full max-w-5xl" data-slide="3" data-speaker="Aluno 1 (0:00 - 1:40)" data-time="1:05 - 1:40" data-notes="Aluno 1 finaliza seu bloco apresentando o paradoxo dos números: tempo de espera longo (57 a 150+ dias) x absenteísmo absurdo de 20% a 30%. O sistema trava por falta de aviso e agilidade. Passar a palavra para o Aluno 2.">
+      <div class="space-y-6">
+        <div>
+          <span class="text-xs font-mono tracking-wider uppercase text-teal-400 font-semibold">2. Dimensão do Problema</span>
+          <h2 class="text-3xl md:text-4xl font-bold text-white mt-1">O Ciclo Vicioso da Ineficiência Operacional</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- Card 1 -->
+          <div class="bg-slate-800/50 border border-slate-700/80 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+            <div>
+              <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xl mb-3">
+                ⏳
+              </div>
+              <div class="text-4xl font-bold font-mono text-amber-400">57 dias</div>
+              <h3 class="text-base font-semibold text-white mt-1">Tempo Médio de Espera</h3>
+              <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                Média nacional para consultas e exames especializados no SUS, superando <strong class="text-white">150 dias</strong> em diversas capitais e no interior.
+              </p>
+            </div>
+            <div class="text-[11px] text-slate-400 font-mono border-t border-slate-700/60 pt-2">
+              APM / CFM (2024)
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="bg-slate-800/50 border border-slate-700/80 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+            <div>
+              <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-xl mb-3">
+                ❌
+              </div>
+              <div class="text-4xl font-bold font-mono text-rose-400">20% a 30%</div>
+              <h3 class="text-base font-semibold text-white mt-1">Absenteísmo nas Consultas</h3>
+              <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                Quase um terço dos agendamentos são perdidos por não comparecimento do paciente, gerando ociosidade médica enquanto a fila continua travada.
+              </p>
+            </div>
+            <div class="text-[11px] text-slate-400 font-mono border-t border-slate-700/60 pt-2">
+              Ciência & Saúde Coletiva
+            </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="bg-slate-800/50 border border-slate-700/80 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+            <div>
+              <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-xl mb-3">
+                🔄
+              </div>
+              <div class="text-4xl font-bold font-mono text-blue-400">Desconexão</div>
+              <h3 class="text-base font-semibold text-white mt-1">Triagem Subjetiva</h3>
+              <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                Ausência de triagem preliminar estruturada: casos graves esperam na mesma fila de renovação de receitas e procedimentos eletivos rotineiros.
+              </p>
+            </div>
+            <div class="text-[11px] text-slate-400 font-mono border-t border-slate-700/60 pt-2">
+              Diretrizes MS / Protocolo Manchester
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 text-center text-xs text-slate-300 flex items-center justify-center gap-2">
+          <span>⚠️</span>
+          <span><strong>Causa e Efeito:</strong> Esperas longas desestimulam o paciente, geram faltas não avisadas e bloqueiam a agenda de quem realmente necessita de urgência.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Fundamentação Acadêmica -->
+    <div class="slide hidden w-full max-w-5xl" data-slide="4" data-speaker="Aluno 2 (1:40 - 3:20)" data-time="1:40 - 2:15" data-notes="Aluno 2 assume! Citar com autoridade as 4 referências exigidas: The Lancet (Paim 2011), IBGE PNS 2019, Censo UBS 2024 e Giovanella 2009. Demonstrar que o grupo pesquisou a literatura científica do SUS.">
+      <div class="space-y-6">
+        <div>
+          <span class="text-xs font-mono tracking-wider uppercase text-teal-400 font-semibold">3. Rigor Científico</span>
+          <h2 class="text-3xl md:text-4xl font-bold text-white mt-1">Fundamentação em Evidências Científicas</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Ref 1 -->
+          <div class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-4 flex gap-3.5 items-start">
+            <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-sm shrink-0 font-mono">
+              01
+            </div>
+            <div>
+              <div class="text-xs font-mono text-teal-400 font-semibold">The Lancet (2011) • Série Brasil</div>
+              <h4 class="text-sm font-bold text-white">PAIM, J. et al. — The Brazilian Health System</h4>
+              <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                Evidencia os avanços institucionais do SUS, mas alerta para a persistência de <strong>desigualdades regionais crônicas</strong> e barreiras severas na atenção primária.
+              </p>
+            </div>
+          </div>
+
+          <!-- Ref 2 -->
+          <div class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-4 flex gap-3.5 items-start">
+            <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-sm shrink-0 font-mono">
+              02
+            </div>
+            <div>
+              <div class="text-xs font-mono text-teal-400 font-semibold">IBGE (2020) • PNS 2019</div>
+              <h4 class="text-sm font-bold text-white">Pesquisa Nacional de Saúde: Acesso e Uso dos Serviços</h4>
+              <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                Dados populacionais oficiais comprovando que o acesso ao SUS varia significativamente segundo <strong>renda, escolaridade e localidade geográfica</strong>.
+              </p>
+            </div>
+          </div>
+
+          <!-- Ref 3 -->
+          <div class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-4 flex gap-3.5 items-start">
+            <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-sm shrink-0 font-mono">
+              03
+            </div>
+            <div>
+              <div class="text-xs font-mono text-teal-400 font-semibold">RESBR / Ministério da Saúde (2024)</div>
+              <h4 class="text-sm font-bold text-white">Censo Nacional das Unidades Básicas de Saúde</h4>
+              <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                Demonstra que apesar de 97% das UBS usarem prontuário eletrônico, <strong>93,8% ainda dependem de filas físicas</strong> para agendamento.
+              </p>
+            </div>
+          </div>
+
+          <!-- Ref 4 -->
+          <div class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-4 flex gap-3.5 items-start">
+            <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-sm shrink-0 font-mono">
+              04
+            </div>
+            <div>
+              <div class="text-xs font-mono text-teal-400 font-semibold">Ciência & Saúde Coletiva (2009)</div>
+              <h4 class="text-sm font-bold text-white">GIOVANELLA, L. et al. — Saúde da Família e Limites</h4>
+              <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                Analisa que a expansão de cobertura precisa ser acompanhada de <strong>mecanismos resolutivos de acesso e acolhimento</strong> para não frustrar o usuário.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Quem se Beneficia? Impacto Social -->
+    <div class="slide hidden w-full max-w-5xl" data-slide="5" data-speaker="Aluno 2 (1:40 - 3:20)" data-time="2:15 - 2:50" data-notes="Aluno 2 continua: abordar as pessoas reais beneficiadas: trabalhadores informais que perdem diária, idosos e mães com crianças, profissionais de saúde e gestores públicos.">
+      <div class="space-y-6">
+        <div>
+          <span class="text-xs font-mono tracking-wider uppercase text-teal-400 font-semibold">4. Impacto Social</span>
+          <h2 class="text-3xl md:text-4xl font-bold text-white mt-1">Quem é Beneficiado e de Que Forma?</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3">
+            <div class="w-9 h-9 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center text-lg">
+              👨‍👩‍👧‍👦
+            </div>
+            <h3 class="text-base font-bold text-white">Comunidades de Baixa Renda</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Trabalhadores informais e autônomos deixam de perder diárias de trabalho apenas para marcar consultas de rotina ou urgência leve.
+            </p>
+          </div>
+
+          <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3">
+            <div class="w-9 h-9 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-lg">
+              👵
+            </div>
+            <h3 class="text-base font-bold text-white">Idosos & Mães Solo</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Elimina o sofrimento de deslocamento matutino na chuva com crianças ou mobilidade reduzida; agendamento feito direto pelo celular.
+            </p>
+          </div>
+
+          <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3">
+            <div class="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
+              🩺
+            </div>
+            <h3 class="text-base font-bold text-white">Profissionais de Saúde</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Agenda previsível com redução drástica de faltas; prontuário preliminar com sintomas já classificados antes do atendimento.
+            </p>
+          </div>
+
+          <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3">
+            <div class="w-9 h-9 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-lg">
+              📊
+            </div>
+            <h3 class="text-base font-bold text-white">Gestores do SUS</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Painel com visibilidade em tempo real de ocupação, especialidades mais demandadas e gargalos territoriais do município.
+            </p>
+          </div>
+        </div>
+
+        <div class="bg-teal-950/40 border border-teal-500/30 rounded-xl p-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">🎯</span>
+            <div>
+              <h4 class="text-sm font-bold text-white">Princípio Constitucional da Equidade</h4>
+              <p class="text-xs text-slate-300">Dar mais e melhor atendimento para quem mais precisa, priorizando casos clínicos e vulnerabilidade.</p>
+            </div>
+          </div>
+          <span class="text-xs font-mono px-2.5 py-1 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">Art. 196 CF/88</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Métricas de Sucesso -->
+    <div class="slide hidden w-full max-w-5xl" data-slide="6" data-speaker="Aluno 2 (1:40 - 3:20)" data-time="2:50 - 3:20" data-notes="Aluno 2 finaliza com as metas quantitativas: agendamento em menos de 3 min, redução de 30-50% nas faltas e mais de 85% de acurácia clínica. Passar a palavra para o Aluno 3.">
+      <div class="space-y-6">
+        <div>
+          <span class="text-xs font-mono tracking-wider uppercase text-teal-400 font-semibold">5. Avaliação de Resultados</span>
+          <h2 class="text-3xl md:text-4xl font-bold text-white mt-1">Como Medir o Impacto na Prática?</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 flex items-center justify-between">
+            <div class="space-y-1">
+              <span class="text-xs font-mono text-slate-400">Métrica 1</span>
+              <h4 class="text-base font-bold text-white">Tempo Médio para Agendar</h4>
+              <p class="text-xs text-slate-300">Tempo total despendido pelo usuário para marcar uma consulta</p>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-rose-400 line-through">4 horas presenciais</div>
+              <div class="text-xl font-bold font-mono text-emerald-400">&lt; 3 minutos</div>
+            </div>
+          </div>
+
+          <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 flex items-center justify-between">
+            <div class="space-y-1">
+              <span class="text-xs font-mono text-slate-400">Métrica 2</span>
+              <h4 class="text-base font-bold text-white">Taxa de Absenteísmo</h4>
+              <p class="text-xs text-slate-300">Consultas perdidas por não comparecimento sem aviso</p>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-rose-400 line-through">20% a 30%</div>
+              <div class="text-xl font-bold font-mono text-emerald-400">Redução de 30-50%</div>
+            </div>
+          </div>
+
+          <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 flex items-center justify-between">
+            <div class="space-y-1">
+              <span class="text-xs font-mono text-slate-400">Métrica 3</span>
+              <h4 class="text-base font-bold text-white">Acurácia da Pré-Triagem</h4>
+              <p class="text-xs text-slate-300">Concordância entre classificação da IA e avaliação médica</p>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-slate-400">Meta inicial</div>
+              <div class="text-xl font-bold font-mono text-teal-400">&gt; 85% concordância</div>
+            </div>
+          </div>
+
+          <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 flex items-center justify-between">
+            <div class="space-y-1">
+              <span class="text-xs font-mono text-slate-400">Métrica 4</span>
+              <h4 class="text-base font-bold text-white">Adoção Digital na UBS</h4>
+              <p class="text-xs text-slate-300">% de agendamentos absorvidos pelo canal distribuído</p>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-slate-400">Evolução esperada</div>
+              <div class="text-xl font-bold font-mono text-teal-400">&gt; 70% em 6 meses</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-950/80 rounded-lg border border-slate-800 text-center text-xs text-slate-400 font-mono">
+          Logs auditáveis no banco de dados permitirão a extração de relatórios antes e depois da implantação.
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: A Solução Distribuída -->
+    <div class="slide hidden w-full max-w-5xl" data-slide="7" data-speaker="Aluno 3 (3:20 - 5:00)" data-time="3:20 - 4:15" data-notes="Aluno 3 assume! Apresentar os dois clientes distintos (BFF Pacientes vs Gestores), os 4 microsserviços com bancos poliglotas (PostgreSQL, Mongo, Redis) e a SAGA orquestrada com compensações da Parte 2.">
+      <div class="space-y-5">
+        <div>
+          <span class="text-xs font-mono tracking-wider uppercase text-teal-400 font-semibold">6. Esboço da Solução Técnica</span>
+          <h2 class="text-3xl md:text-4xl font-bold text-white mt-1">Arquitetura Distribuída & Microsserviços</h2>
+        </div>
+
+        <!-- 2 Clientes -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-blue-950/30 border border-blue-500/30 rounded-xl p-3.5 flex items-center gap-3">
+            <span class="text-2xl">📱</span>
+            <div>
+              <div class="text-xs text-blue-400 font-mono font-semibold">Cliente 1 • BFF Paciente</div>
+              <h4 class="text-sm font-bold text-white">App Web Responsivo / PWA</h4>
+              <p class="text-xs text-slate-300">Triagem intuitiva, seleção de horários disponíveis e lembretes.</p>
+            </div>
+          </div>
+
+          <div class="bg-purple-950/30 border border-purple-500/30 rounded-xl p-3.5 flex items-center gap-3">
+            <span class="text-2xl">🖥️</span>
+            <div>
+              <div class="text-xs text-purple-400 font-mono font-semibold">Cliente 2 • BFF Gestor</div>
+              <h4 class="text-sm font-bold text-white">Painel Administrativo da UBS</h4>
+              <p class="text-xs text-slate-300">Gestão de escalas, mapas de demanda por bairro e métricas de faltas.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Microsserviços Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-lg">👤</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">FastAPI</span>
+            </div>
+            <h4 class="text-xs font-bold text-white">Serviço Pacientes</h4>
+            <p class="text-[11px] text-slate-300">Cadastro, autenticação e histórico simplificado.</p>
+            <div class="text-[10px] text-slate-400 font-mono">🐘 PostgreSQL</div>
+          </div>
+
+          <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-lg">📅</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">NestJS</span>
+            </div>
+            <h4 class="text-xs font-bold text-white">Serviço Agendamento</h4>
+            <p class="text-[11px] text-slate-300">Slots, disponibilidade e regras temporais (CQRS).</p>
+            <div class="text-[10px] text-slate-400 font-mono">🐘 PostgreSQL</div>
+          </div>
+
+          <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-lg">🤖</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">FastAPI + IA</span>
+            </div>
+            <h4 class="text-xs font-bold text-white">Serviço Triagem IA</h4>
+            <p class="text-[11px] text-slate-300">RAG sobre Manchester e protocolos do SUS.</p>
+            <div class="text-[10px] text-slate-400 font-mono">🍃 Mongo + Chroma</div>
+          </div>
+
+          <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-lg">📧</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">Node.js</span>
+            </div>
+            <h4 class="text-xs font-bold text-white">Serviço Notificações</h4>
+            <p class="text-[11px] text-slate-300">Mensageria assíncrona para SMS/Email e lembretes.</p>
+            <div class="text-[10px] text-slate-400 font-mono">🔴 Redis</div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2 text-slate-300">
+            <span class="text-teal-400 font-bold">Padrão SAGA:</span>
+            <span>Fluxo de Agendamento atravessa 3 serviços com transações compensatórias nativas.</span>
+          </div>
+          <span class="text-teal-400 font-mono text-[11px]">RabbitMQ assíncrono</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Fechamento & Repositório -->
+    <div class="slide hidden w-full max-w-5xl" data-slide="8" data-speaker="Aluno 3 (3:20 - 5:00)" data-time="4:15 - 5:00" data-notes="Fechamento do pitch! Mostrar que as exigências formais de Git/GitHub foram 100% cumpridas: repo público criado, branch protection ativada, 3 colaboradores e PRs abertos. Concluir com a frase de efeito e abrir para a arguição do professor.">
+      <div class="space-y-6 text-center">
+        <div>
+          <span class="text-xs font-mono tracking-wider uppercase text-teal-400 font-semibold">7. Governança & Entregáveis</span>
+          <h2 class="text-3xl md:text-4xl font-bold text-white mt-1">Repositório Oficial & Pronto para a Parte 2</h2>
+        </div>
+
+        <!-- Repo Banner -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 max-w-2xl mx-auto space-y-4">
+          <div class="flex items-center justify-center gap-3">
+            <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+            <a href="https://github.com/multiheros/saude-conecta" target="_blank" class="text-xl font-bold text-teal-400 hover:underline font-mono">
+              github.com/multiheros/saude-conecta
+            </a>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-xs font-mono">
+            <div class="bg-slate-900/90 py-1.5 rounded border border-slate-800 text-slate-300">
+              ✓ Repo Público
+            </div>
+            <div class="bg-slate-900/90 py-1.5 rounded border border-slate-800 text-slate-300">
+              ✓ 3 Colaboradores
+            </div>
+            <div class="bg-slate-900/90 py-1.5 rounded border border-slate-800 text-slate-300">
+              ✓ Branch Protection
+            </div>
+            <div class="bg-slate-900/90 py-1.5 rounded border border-slate-800 text-slate-300">
+              ✓ Code Review PRs
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <p class="text-lg text-white font-medium">
+            "A saúde do cidadão não pode depender de uma fila física na madrugada."
+          </p>
+          <p class="text-sm text-slate-400">
+            Muito obrigado! Estamos à disposição para as perguntas da arguição.
+          </p>
+        </div>
+
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/30 text-xs font-semibold">
+          🚀 Pronto para a Parte 2: Modelagem Arquitetural, SAGA e CQRS
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Bar: Atalhos e Notas Rápidas -->
+  <footer class="w-full bg-slate-950 border-t border-slate-800 px-6 py-2.5 flex items-center justify-between text-xs text-slate-400 z-20">
+    <div class="flex items-center gap-4">
+      <span>⌨️ <strong>Atalhos:</strong> <kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">←</kbd> <kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">→</kbd> ou <kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">Espaço</kbd></span>
+      <span><kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">F</kbd> Tela Cheia</span>
+      <span><kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">N</kbd> Roteiro de Fala</span>
+      <span><kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">R</kbd> Resetar Cronômetro</span>
+    </div>
+    <div class="flex items-center gap-2 text-slate-400">
+      <span>Tempo Previsto deste Slide:</span>
+      <span id="slideExpectedTime" class="font-mono text-teal-400 font-semibold">0:00 - 0:25</span>
+    </div>
+  </footer>
+
+  <!-- Modal / Gaveta de Notas do Apresentador -->
+  <div id="notesDrawer" class="hidden fixed inset-x-0 bottom-12 bg-slate-950/95 border-t border-teal-500/30 p-5 z-40 backdrop-filter backdrop-blur-xl shadow-2xl transition-all">
+    <div class="max-w-5xl mx-auto flex flex-col gap-2">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-bold text-teal-400 flex items-center gap-1.5">
+            📝 Roteiro do Apresentador • <span id="notesSpeakerLabel">Aluno 1</span>
+          </span>
+          <span id="notesTimeLabel" class="text-xs font-mono text-slate-400 px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+            0:00 - 0:25
+          </span>
+        </div>
+        <button id="btnCloseNotes" class="text-slate-400 hover:text-white text-xs px-2 py-1 rounded hover:bg-slate-800">
+          ✕ Fechar (N)
+        </button>
+      </div>
+      <p id="notesContent" class="text-sm text-slate-200 leading-relaxed font-sans mt-1">
+        Boa tarde professor e colegas! Nós somos a SaúdeConecta...
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // Gerenciador de Slides e Pitch Timer
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let currentSlide = 1;
+
+    // Elementos UI
+    const currentSlideNumEl = document.getElementById('currentSlideNum');
+    const totalSlidesNumEl = document.getElementById('totalSlidesNum');
+    const speakerBadgeEl = document.getElementById('speakerBadge');
+    const slideProgressBar = document.getElementById('slideProgressBar');
+    const slideExpectedTimeEl = document.getElementById('slideExpectedTime');
+    const btnPrev = document.getElementById('btnPrev');
+    const btnNext = document.getElementById('btnNext');
+    const btnNotesToggle = document.getElementById('btnNotesToggle');
+    const btnCloseNotes = document.getElementById('btnCloseNotes');
+    const notesDrawer = document.getElementById('notesDrawer');
+    const notesSpeakerLabel = document.getElementById('notesSpeakerLabel');
+    const notesTimeLabel = document.getElementById('notesTimeLabel');
+    const notesContent = document.getElementById('notesContent');
+
+    // Cronômetro (5 minutos = 300 segundos)
+    const TOTAL_SECONDS = 300;
+    let secondsRemaining = TOTAL_SECONDS;
+    let timerInterval = null;
+    let isTimerRunning = false;
+
+    const timerDisplay = document.getElementById('timerDisplay');
+    const timerStatusDot = document.getElementById('timerStatusDot');
+    const btnTimerToggle = document.getElementById('btnTimerToggle');
+    const btnTimerReset = document.getElementById('btnTimerReset');
+
+    totalSlidesNumEl.textContent = totalSlides;
+
+    function showSlide(index) {
+      if (index < 1) index = 1;
+      if (index > totalSlides) index = totalSlides;
+      currentSlide = index;
+
+      slides.forEach((slide, i) => {
+        if (i + 1 === currentSlide) {
+          slide.classList.remove('hidden');
+          slide.classList.add('slide-enter');
+          
+          // Atualiza speaker e tempo
+          const speaker = slide.getAttribute('data-speaker') || '';
+          const time = slide.getAttribute('data-time') || '';
+          const notes = slide.getAttribute('data-notes') || '';
+
+          speakerBadgeEl.textContent = '🗣️ ' + speaker;
+          slideExpectedTimeEl.textContent = time;
+
+          // Atualiza drawer de notas
+          notesSpeakerLabel.textContent = speaker;
+          notesTimeLabel.textContent = time;
+          notesContent.textContent = notes;
+        } else {
+          slide.classList.add('hidden');
+          slide.classList.remove('slide-enter');
+        }
+      });
+
+      currentSlideNumEl.textContent = currentSlide;
+      btnPrev.disabled = currentSlide === 1;
+      btnNext.disabled = currentSlide === totalSlides;
+
+      const progressPercent = (currentSlide / totalSlides) * 100;
+      slideProgressBar.style.width = progressPercent + '%';
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        showSlide(currentSlide + 1);
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        showSlide(currentSlide - 1);
+      }
+    }
+
+    function toggleNotes() {
+      notesDrawer.classList.toggle('hidden');
+    }
+
+    // Timer functions
+    function updateTimerDisplay() {
+      const minutes = Math.floor(secondsRemaining / 60);
+      const seconds = secondsRemaining % 60;
+      const formatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      timerDisplay.textContent = formatted;
+
+      // Color coding conforme o tempo do pitch
+      if (secondsRemaining > 120) {
+        // Mais de 2 min: verde
+        timerDisplay.className = 'font-mono text-sm font-bold text-emerald-400';
+        timerStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500' + (isTimerRunning ? ' animate-pulse' : '');
+      } else if (secondsRemaining > 45) {
+        // Entre 45s e 2min: amarelo/alerta
+        timerDisplay.className = 'font-mono text-sm font-bold text-amber-400';
+        timerStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping';
+      } else {
+        // Últimos 45s ou estourado: vermelho crítico
+        timerDisplay.className = 'font-mono text-sm font-bold text-rose-500 animate-pulse';
+        timerStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping';
+      }
+    }
+
+    function startTimer() {
+      if (isTimerRunning) return;
+      isTimerRunning = true;
+      btnTimerToggle.textContent = '⏸ Pausar';
+      btnTimerToggle.classList.add('bg-slate-800', 'text-amber-400');
+      
+      timerInterval = setInterval(() => {
+        if (secondsRemaining > 0) {
+          secondsRemaining--;
+          updateTimerDisplay();
+        } else {
+          clearInterval(timerInterval);
+          isTimerRunning = false;
+          btnTimerToggle.textContent = '⏰ Tempo Esgotado!';
+          btnTimerToggle.classList.add('text-rose-400');
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      if (!isTimerRunning) return;
+      clearInterval(timerInterval);
+      isTimerRunning = false;
+      btnTimerToggle.textContent = '▶ Continuar';
+      btnTimerToggle.classList.remove('text-amber-400');
+      updateTimerDisplay();
+    }
+
+    function toggleTimer() {
+      if (isTimerRunning) {
+        pauseTimer();
+      } else {
+        startTimer();
+      }
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      secondsRemaining = TOTAL_SECONDS;
+      btnTimerToggle.textContent = '▶ Iniciar';
+      updateTimerDisplay();
+    }
+
+    // Teclas de atalho
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === ' ' && e.target === document.body) {
+        e.preventDefault();
+        if (!isTimerRunning && secondsRemaining === TOTAL_SECONDS) {
+          startTimer();
+        } else {
+          nextSlide();
+        }
+      } else if (e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        toggleNotes();
+      } else if (e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        toggleTimer();
+      } else if (e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        resetTimer();
+      } else if (e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    });
+
+    // Event listeners dos botões
+    btnPrev.addEventListener('click', prevSlide);
+    btnNext.addEventListener('click', nextSlide);
+    btnNotesToggle.addEventListener('click', toggleNotes);
+    btnCloseNotes.addEventListener('click', toggleNotes);
+    btnTimerToggle.addEventListener('click', toggleTimer);
+    btnTimerReset.addEventListener('click', resetTimer);
+    document.getElementById('btnFullscreen').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    // Inicialização
+    showSlide(1);
+    updateTimerDisplay();
+  </script>
+</body>
+</html>
