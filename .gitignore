@@ -1,0 +1,74 @@
+# Environment variables (NEVER commit secrets)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+.next/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Kubernetes secrets (real values)
+k8s/secrets/*.yaml
+!k8s/secrets/*.example.yaml
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Database files
+*.db
+*.sqlite3
+data/
+
+# ChromaDB local storage
+chroma_data/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Antigravity / Agent files
+.agents/
+GEMINI.md
+
+# Work files (not for repo — analysis and planning docs)
+descricao
+descricao_trabalho.md
+analise_trabalho.md
+analise_comparativa_dominios.md
+saude_conecta_concepcao.md
+checklist_requisitos.md
+guia_parte1.md
+roteiro_pitch.md
+estrutura_slides.md
