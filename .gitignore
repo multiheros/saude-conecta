@@ -58,8 +58,10 @@ tmp/
 temp/
 *.tmp
 
-# Antigravity / Agent files
+# Agent / assistant files (não versionar)
 .agents/
+.opencode/
+/AGENTS.md
 GEMINI.md
 
 # Work files (not for repo — analysis and planning docs)
