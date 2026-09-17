@@ -8,14 +8,14 @@
 
 ---
 
-## 🧭 Navegação rápida
+## 🧭 Sumário
 
 | # | Seção |
 |---|-------|
-| 1 | [Resumo em 30 segundos](#-resumo-em-30-segundos) |
+| 1 | [Visão Geral](#-visão-geral) |
 | 2 | [Equipe](#-equipe) |
 | 3 | [O Problema](#-o-problema) |
-| 4 | [Os Números](#-os-números) |
+| 4 | [O Problema em Números](#-o-problema-em-números) |
 | 5 | [Fundamentação](#-fundamentação) |
 | 6 | [Impacto Social](#-impacto-social) |
 | 7 | [A Solução](#-a-solução) |
@@ -28,7 +28,7 @@
 
 ---
 
-## ⚡ Resumo em 30 segundos
+## ⚡ Visão Geral
 
 - **O que é:** plataforma de agendamento digital e triagem assistida por IA para Unidades Básicas de Saúde (UBS) do SUS.
 - **Para quem:** pacientes da Atenção Primária e gestores municipais de saúde.
@@ -70,7 +70,7 @@ O Sistema Único de Saúde (SUS) é o maior sistema de saúde pública do mundo,
 
 ---
 
-## 📊 Os Números
+## 📊 O Problema em Números
 
 | Indicador | Valor | Fonte |
 |-----------|-------|-------|
