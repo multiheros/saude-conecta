@@ -1,0 +1,150 @@
+openapi: 3.0.3
+info:
+  title: SaúdeConecta — Serviço de Notificações
+  version: 1.0.0
+  description: |
+    Lembretes, confirmações e alertas. Banco: Redis (filas/agendamento por TTL).
+    Majoritariamente orientado a eventos (RabbitMQ); a API REST cobre o passo 4 da SAGA e consulta.
+servers:
+  - url: https://api.saudeconecta.local/api/v1
+    description: Via API Gateway
+tags:
+  - name: Notificações
+  - name: Preferências
+paths:
+  /notificacoes:
+    post:
+      tags: [Notificações]
+      summary: (SAGA passo 4) Agenda confirmação + lembrete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificacaoCreate' }
+      responses:
+        '201':
+          description: Notificações agendadas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Notificacao' }
+        '422': { description: Dados inválidos }
+    get:
+      tags: [Notificações]
+      summary: Lista notificações do paciente
+      parameters:
+        - { name: pacienteId, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/StatusNotificacao' } }
+      responses:
+        '200':
+          description: Notificações
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Notificacao' }
+  /notificacoes/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Notificações]
+      summary: Consulta notificação
+      responses:
+        '200':
+          description: Notificação
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notificacao' }
+        '404': { description: Não encontrada }
+    delete:
+      tags: [Notificações]
+      summary: (SAGA compensação) Cancela notificação agendada
+      responses:
+        '204': { description: Cancelada (idempotente) }
+  /notificacoes/alertas:
+    get:
+      tags: [Notificações]
+      summary: Alertas de gargalo para gestores
+      responses:
+        '200':
+          description: Alertas ativos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Alerta' }
+        '403': { description: Apenas perfil gestor }
+  /pacientes/{pacienteId}/preferencias-notificacao:
+    parameters:
+      - { name: pacienteId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Preferências]
+      summary: Consulta canais preferidos
+      responses:
+        '200':
+          description: Preferências
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Preferencias' }
+    put:
+      tags: [Preferências]
+      summary: Atualiza canais preferidos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Preferencias' }
+      responses:
+        '200': { description: Atualizado }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Canal:
+      type: string
+      enum: [SMS, EMAIL, WHATSAPP, PUSH]
+    StatusNotificacao:
+      type: string
+      enum: [AGENDADA, ENVIADA, FALHA, CANCELADA]
+    NotificacaoCreate:
+      type: object
+      required: [pacienteId, agendamentoId, dataConsulta]
+      properties:
+        pacienteId: { type: string, format: uuid }
+        agendamentoId: { type: string, format: uuid }
+        dataConsulta: { type: string, format: date-time }
+        canais:
+          type: array
+          items: { $ref: '#/components/schemas/Canal' }
+    Notificacao:
+      type: object
+      properties:
+        id: { type: string }
+        pacienteId: { type: string, format: uuid }
+        agendamentoId: { type: string, format: uuid }
+        tipo: { type: string, enum: [CONFIRMACAO, LEMBRETE_24H, LEMBRETE_2H, ALERTA] }
+        canal: { $ref: '#/components/schemas/Canal' }
+        status: { $ref: '#/components/schemas/StatusNotificacao' }
+        enviarEm: { type: string, format: date-time }
+    Alerta:
+      type: object
+      properties:
+        id: { type: string }
+        ubsId: { type: string, format: uuid }
+        especialidade: { type: string }
+        ocupacaoPercentual: { type: number }
+        mensagem: { type: string }
+        criadoEm: { type: string, format: date-time }
+    Preferencias:
+      type: object
+      properties:
+        canais:
+          type: array
+          items: { $ref: '#/components/schemas/Canal' }
+        antecedenciaLembreteHoras: { type: integer, example: 24 }
+security:
+  - bearerAuth: []
