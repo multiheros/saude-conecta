@@ -160,7 +160,7 @@ flowchart TB
 
 ## 3. Acoplamento e autonomia
 
-- **Nenhum serviço lê o banco do outro** (Database per Service).
+- **Nenhum serviço lê o banco do outro** (Database per Service): cada banco é uma **instância própria** (container/StatefulSet separado, com volume e credenciais exclusivas). Mesmo onde a tecnologia se repete (PostgreSQL em Pacientes e Agendamento; MongoDB em Triagem e no Read Model de Agendamento), não há servidor compartilhado: a falha ou a migração de um banco não atinge outro serviço.
 - Se **Notificações** cair, agendar continua funcionando: o evento fica na fila (o passo 4 da SAGA é a única dependência síncrona, tratada pela compensação ou *retry*).
 - Dados replicados (ex.: nome do paciente para exibição) são **cópias eventualmente consistentes**, nunca fonte de verdade.
 - O Orquestrador mora no serviço de **Agendamento** (dono do processo de negócio), evitando um 5º serviço.
