@@ -208,6 +208,48 @@ paths:
             application/hal+json:
               schema: { $ref: '#/components/schemas/AgendamentoHateoas' }
         '409': { description: Transição de estado inválida }
+  /relatorios/ocupacao:
+    get:
+      tags: [Agendamentos]
+      summary: Indicadores agregados de ocupação e absenteísmo (bff-admin)
+      description: |
+        Servido pelo Read Model (coleção `ocupacao_ubs`, CQRS). Defasagem ≤ 5 s,
+        informada em `defasagemSegundos`. Apenas perfil `gestor`; não contém dados pessoais.
+      parameters:
+        - { name: ubsId, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: periodo, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$', example: '2026-11' } }
+        - { name: especialidade, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Agregados do período
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ubsId: { type: string, format: uuid }
+                  periodo: { type: string, example: '2026-11' }
+                  slotsTotais: { type: integer }
+                  reservados: { type: integer }
+                  ocupacaoPercentual: { type: number }
+                  porStatus:
+                    type: object
+                    additionalProperties: { type: integer }
+                  porUrgencia:
+                    type: object
+                    additionalProperties: { type: integer }
+                  taxaAbsenteismo: { type: number }
+                  serieDiaria:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        data: { type: string, format: date }
+                        agendados: { type: integer }
+                        faltas: { type: integer }
+                  defasagemSegundos: { type: integer }
+        '400': { description: Parâmetros inválidos }
+        '403': { description: Apenas perfil gestor }
   /escalas:
     post:
       tags: [Escalas]
