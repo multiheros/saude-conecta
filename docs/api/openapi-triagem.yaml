@@ -1,0 +1,135 @@
+openapi: 3.0.3
+info:
+  title: SaúdeConecta — Serviço de Triagem IA
+  version: 1.0.0
+  description: |
+    Classificação de urgência (LLM + RAG sobre protocolos médicos) e orientação pré-consulta.
+    Bancos: MongoDB (triagens) + ChromaDB (vetores). A classificação segue o Protocolo de Manchester (5 níveis).
+servers:
+  - url: https://api.saudeconecta.local/api/v1
+    description: Via API Gateway
+tags:
+  - name: Triagens
+paths:
+  /triagens:
+    post:
+      tags: [Triagens]
+      summary: (SAGA passo 1) Classifica urgência a partir dos sintomas
+      description: |
+        Latência alvo p95 <= 8 s (chamada ao LLM). Resultado é **temporário** até a SAGA concluir.
+        O modelo apenas **sugere**; a decisão clínica final é do profissional.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TriagemRequest' }
+      responses:
+        '201':
+          description: Classificação gerada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Triagem' }
+        '422':
+          description: Sintomas insuficientes
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '503':
+          description: LLM indisponível (acionar fallback manual)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /triagens/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Triagens]
+      summary: Consulta triagem
+      responses:
+        '200':
+          description: Triagem
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Triagem' }
+        '404': { description: Não encontrada }
+    delete:
+      tags: [Triagens]
+      summary: (SAGA compensação) Descarta classificação temporária
+      responses:
+        '204': { description: Descartada (idempotente) }
+  /triagens/{id}/orientacoes:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Triagens]
+      summary: Orientações pré-consulta
+      responses:
+        '200':
+          description: Orientações com as fontes do protocolo (RAG)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orientacoes:
+                    type: array
+                    items: { type: string }
+                  fontes:
+                    type: array
+                    items: { type: string, example: 'Protocolo de Acolhimento MS, p. 42' }
+  /triagens/{id}/feedback:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Triagens]
+      summary: Registra classificação do médico (métrica de concordância > 85%)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [classificacaoMedico]
+              properties:
+                classificacaoMedico: { $ref: '#/components/schemas/Urgencia' }
+      responses:
+        '204': { description: Feedback registrado }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Urgencia:
+      type: string
+      enum: [VERMELHO, LARANJA, AMARELO, VERDE, AZUL]
+    TriagemRequest:
+      type: object
+      required: [pacienteId, sintomas]
+      properties:
+        pacienteId: { type: string, format: uuid }
+        sintomas: { type: string, example: Dor de cabeça forte há 3 dias e febre }
+        idade: { type: integer }
+    Triagem:
+      type: object
+      properties:
+        id: { type: string }
+        pacienteId: { type: string, format: uuid }
+        classificacao: { $ref: '#/components/schemas/Urgencia' }
+        justificativa: { type: string }
+        especialidadeSugerida: { type: string }
+        confianca: { type: number, format: float, minimum: 0, maximum: 1 }
+        temporaria: { type: boolean }
+        criadoEm: { type: string, format: date-time }
+    Problem:
+      type: object
+      description: RFC 7807 (Problem Details)
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        correlationId: { type: string }
+security:
+  - bearerAuth: []

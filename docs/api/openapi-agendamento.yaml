@@ -1,0 +1,305 @@
+openapi: 3.0.3
+info:
+  title: SaúdeConecta — Serviço de Agendamento
+  version: 1.0.0
+  description: |
+    Slots, reservas, disponibilidade e escalas. Write model em PostgreSQL;
+    leituras (`GET`) servidas pelo Read Model (CQRS — ver `docs/arquitetura/cqrs-agendamento.md`).
+    O recurso `GET /agendamentos/{id}` é **HATEOAS**: o objeto `_links` expõe
+    apenas as ações permitidas para o estado atual do agendamento.
+servers:
+  - url: https://api.saudeconecta.local/api/v1
+    description: Via API Gateway
+tags:
+  - name: Agendamentos
+  - name: Slots
+  - name: Escalas
+paths:
+  /slots:
+    get:
+      tags: [Slots]
+      summary: Consulta disponibilidade de horários
+      parameters:
+        - { name: ubsId, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: especialidade, in: query, schema: { type: string } }
+        - { name: dataInicio, in: query, schema: { type: string, format: date } }
+        - { name: dataFim, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Slots disponíveis (Read Model)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Slot' }
+  /slots/{id}/reserva:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Slots]
+      summary: (SAGA passo 3) Reserva slot
+      description: Idempotente via header `Idempotency-Key`.
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pacienteId, sagaId]
+              properties:
+                pacienteId: { type: string, format: uuid }
+                sagaId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Slot reservado (publica `SlotReservado` via Outbox)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agendamento' }
+        '409':
+          description: Slot indisponível
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+    delete:
+      tags: [Slots]
+      summary: (SAGA compensação) Libera slot reservado
+      responses:
+        '204': { description: Slot liberado (idempotente) }
+  /agendamentos:
+    post:
+      tags: [Agendamentos]
+      summary: Solicita agendamento (inicia a SAGA)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgendamentoCreate' }
+      responses:
+        '202':
+          description: SAGA iniciada; acompanhar pelo recurso retornado
+          headers:
+            Location:
+              schema: { type: string }
+              example: /api/v1/agendamentos/3fa85f64-5717-4562-b3fc-2c963f66afa6
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agendamento' }
+        '422':
+          description: Dados inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+    get:
+      tags: [Agendamentos]
+      summary: Lista agendamentos (filtrável)
+      parameters:
+        - { name: pacienteId, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/StatusAgendamento' } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: size, in: query, schema: { type: integer, default: 20, maximum: 100 } }
+      responses:
+        '200':
+          description: Página de agendamentos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Agendamento' }
+                  page: { type: integer }
+                  total: { type: integer }
+  /agendamentos/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/AgendamentoId' }
+    get:
+      tags: [Agendamentos]
+      summary: Obtém agendamento (HATEOAS)
+      description: |
+        Os links variam conforme `status`:
+
+        | status | links |
+        |--------|-------|
+        | PENDENTE | self, cancelar |
+        | AGENDADO | self, confirmar, reagendar, cancelar |
+        | CONFIRMADO | self, reagendar, cancelar |
+        | CANCELADO / REALIZADO / FALTOU | self |
+      responses:
+        '200':
+          description: Agendamento com `_links`
+          content:
+            application/hal+json:
+              schema: { $ref: '#/components/schemas/AgendamentoHateoas' }
+              examples:
+                agendado:
+                  value:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    status: AGENDADO
+                    pacienteId: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+                    slotId: 9b2d5c1e-0a4f-4c8e-8f35-1d6f2f9a7b10
+                    dataHora: '2026-11-05T09:30:00-03:00'
+                    especialidade: Clínica Geral
+                    classificacaoUrgencia: AMARELO
+                    _links:
+                      self: { href: /api/v1/agendamentos/3fa85f64-5717-4562-b3fc-2c963f66afa6, method: GET }
+                      confirmar: { href: /api/v1/agendamentos/3fa85f64-5717-4562-b3fc-2c963f66afa6/confirmacao, method: POST }
+                      reagendar: { href: /api/v1/agendamentos/3fa85f64-5717-4562-b3fc-2c963f66afa6/reagendamento, method: POST }
+                      cancelar: { href: /api/v1/agendamentos/3fa85f64-5717-4562-b3fc-2c963f66afa6/cancelamento, method: POST }
+        '404':
+          description: Não encontrado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /agendamentos/{id}/confirmacao:
+    parameters:
+      - { $ref: '#/components/parameters/AgendamentoId' }
+    post:
+      tags: [Agendamentos]
+      summary: Confirma presença
+      responses:
+        '200':
+          description: Confirmado
+          content:
+            application/hal+json:
+              schema: { $ref: '#/components/schemas/AgendamentoHateoas' }
+        '409': { description: Transição de estado inválida }
+  /agendamentos/{id}/reagendamento:
+    parameters:
+      - { $ref: '#/components/parameters/AgendamentoId' }
+    post:
+      tags: [Agendamentos]
+      summary: Reagenda para outro slot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [novoSlotId]
+              properties:
+                novoSlotId: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Reagendado
+          content:
+            application/hal+json:
+              schema: { $ref: '#/components/schemas/AgendamentoHateoas' }
+        '409': { description: Slot indisponível ou transição inválida }
+  /agendamentos/{id}/cancelamento:
+    parameters:
+      - { $ref: '#/components/parameters/AgendamentoId' }
+    post:
+      tags: [Agendamentos]
+      summary: Cancela agendamento e libera o slot
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                motivo: { type: string }
+      responses:
+        '200':
+          description: Cancelado
+          content:
+            application/hal+json:
+              schema: { $ref: '#/components/schemas/AgendamentoHateoas' }
+        '409': { description: Transição de estado inválida }
+  /escalas:
+    post:
+      tags: [Escalas]
+      summary: Cria escala de profissional (gera slots)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EscalaCreate' }
+      responses:
+        '201': { description: Escala criada e slots gerados }
+        '403': { description: Apenas perfil gestor }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    AgendamentoId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    StatusAgendamento:
+      type: string
+      enum: [PENDENTE, AGENDADO, CONFIRMADO, CANCELADO, REALIZADO, FALTOU]
+    Slot:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ubsId: { type: string, format: uuid }
+        profissionalId: { type: string, format: uuid }
+        especialidade: { type: string }
+        inicio: { type: string, format: date-time }
+        fim: { type: string, format: date-time }
+        status: { type: string, enum: [LIVRE, RESERVADO, BLOQUEADO] }
+    AgendamentoCreate:
+      type: object
+      required: [pacienteId, slotId, sintomas]
+      properties:
+        pacienteId: { type: string, format: uuid }
+        slotId: { type: string, format: uuid }
+        sintomas: { type: string, description: Texto livre enviado à triagem }
+    Agendamento:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/StatusAgendamento' }
+        pacienteId: { type: string, format: uuid }
+        slotId: { type: string, format: uuid }
+        dataHora: { type: string, format: date-time }
+        especialidade: { type: string }
+        classificacaoUrgencia: { type: string, enum: [VERMELHO, LARANJA, AMARELO, VERDE, AZUL] }
+    Link:
+      type: object
+      required: [href]
+      properties:
+        href: { type: string }
+        method: { type: string, enum: [GET, POST, PUT, DELETE] }
+    AgendamentoHateoas:
+      allOf:
+        - { $ref: '#/components/schemas/Agendamento' }
+        - type: object
+          properties:
+            _links:
+              type: object
+              required: [self]
+              properties:
+                self: { $ref: '#/components/schemas/Link' }
+                confirmar: { $ref: '#/components/schemas/Link' }
+                reagendar: { $ref: '#/components/schemas/Link' }
+                cancelar: { $ref: '#/components/schemas/Link' }
+    EscalaCreate:
+      type: object
+      required: [profissionalId, ubsId, diaSemana, horaInicio, horaFim, duracaoSlotMin]
+      properties:
+        profissionalId: { type: string, format: uuid }
+        ubsId: { type: string, format: uuid }
+        diaSemana: { type: integer, minimum: 1, maximum: 7 }
+        horaInicio: { type: string, example: '08:00' }
+        horaFim: { type: string, example: '12:00' }
+        duracaoSlotMin: { type: integer, example: 30 }
+    Problem:
+      type: object
+      description: RFC 7807 (Problem Details)
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        correlationId: { type: string }
+security:
+  - bearerAuth: []

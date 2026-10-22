@@ -1,0 +1,255 @@
+openapi: 3.0.3
+info:
+  title: SaúdeConecta — Serviço de Pacientes
+  version: 1.0.0
+  description: |
+    Cadastro, autenticação, perfil e histórico de pacientes.
+    Banco: PostgreSQL (Database per Service).
+    Versionamento por URI Pathing — ver `docs/decisoes-tecnicas/api-guidelines.md`.
+servers:
+  - url: https://api.saudeconecta.local/api/v1
+    description: Via API Gateway
+tags:
+  - name: Autenticação
+  - name: Pacientes
+paths:
+  /auth/login:
+    post:
+      tags: [Autenticação]
+      summary: Autentica o paciente e emite JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Token emitido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /pacientes:
+    post:
+      tags: [Pacientes]
+      summary: Cadastra novo paciente
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PacienteCreate' }
+      responses:
+        '201':
+          description: Paciente criado
+          headers:
+            Location:
+              schema: { type: string }
+              example: /api/v1/pacientes/7c9e6679-7425-40de-944b-e07fc1f90ae7
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Paciente' }
+        '409':
+          description: CPF já cadastrado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    get:
+      tags: [Pacientes]
+      summary: Lista pacientes (uso administrativo)
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página de pacientes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Paciente' }
+                  page: { type: integer }
+                  size: { type: integer }
+                  total: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /pacientes/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/PacienteId' }
+    get:
+      tags: [Pacientes]
+      summary: Obtém perfil do paciente
+      responses:
+        '200':
+          description: Perfil
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Paciente' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Pacientes]
+      summary: Atualiza perfil
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PacienteUpdate' }
+      responses:
+        '200':
+          description: Perfil atualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Paciente' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /pacientes/{id}/historico:
+    parameters:
+      - { $ref: '#/components/parameters/PacienteId' }
+    get:
+      tags: [Pacientes]
+      summary: Histórico simplificado de atendimentos
+      responses:
+        '200':
+          description: Lista de atendimentos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Atendimento' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /pacientes/{id}/validacao:
+    parameters:
+      - { $ref: '#/components/parameters/PacienteId' }
+    post:
+      tags: [Pacientes]
+      summary: (SAGA passo 2) Valida paciente e marca "agendamento em andamento"
+      description: Chamado pelo orquestrador. Compensação é `DELETE` neste mesmo recurso.
+      responses:
+        '200':
+          description: Paciente válido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valido: { type: boolean }
+                  agendamentoEmAndamento: { type: boolean }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Paciente inativo ou já com agendamento em andamento
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+    delete:
+      tags: [Pacientes]
+      summary: (SAGA compensação) Reverte flag "agendamento em andamento"
+      responses:
+        '204': { description: Flag revertida (idempotente) }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    PacienteId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+  responses:
+    Unauthorized:
+      description: Token ausente ou inválido
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: Sem permissão
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    ValidationError:
+      description: Dados inválidos
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    LoginRequest:
+      type: object
+      required: [cpf, senha]
+      properties:
+        cpf: { type: string, example: '12345678909' }
+        senha: { type: string, format: password }
+    TokenResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string, example: Bearer }
+        expiresIn: { type: integer, example: 3600 }
+    PacienteCreate:
+      type: object
+      required: [nome, cpf, dataNascimento, email, senha]
+      properties:
+        nome: { type: string, example: Maria da Silva }
+        cpf: { type: string, example: '12345678909' }
+        dataNascimento: { type: string, format: date }
+        email: { type: string, format: email }
+        telefone: { type: string, example: '+5535999990000' }
+        senha: { type: string, format: password, minLength: 8 }
+        ubsReferenciaId: { type: string, format: uuid }
+    PacienteUpdate:
+      type: object
+      properties:
+        nome: { type: string }
+        email: { type: string, format: email }
+        telefone: { type: string }
+        ubsReferenciaId: { type: string, format: uuid }
+    Paciente:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nome: { type: string }
+        cpf: { type: string }
+        dataNascimento: { type: string, format: date }
+        email: { type: string, format: email }
+        telefone: { type: string }
+        ubsReferenciaId: { type: string, format: uuid }
+        ativo: { type: boolean }
+        criadoEm: { type: string, format: date-time }
+    Atendimento:
+      type: object
+      properties:
+        agendamentoId: { type: string, format: uuid }
+        data: { type: string, format: date-time }
+        especialidade: { type: string }
+        ubs: { type: string }
+        status: { type: string, enum: [REALIZADO, FALTOU, CANCELADO] }
+    Problem:
+      type: object
+      description: RFC 7807 (Problem Details)
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        correlationId: { type: string }
+security:
+  - bearerAuth: []
