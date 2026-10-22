@@ -165,4 +165,4 @@ flowchart TB
 - Dados replicados (ex.: nome do paciente para exibição) são **cópias eventualmente consistentes**, nunca fonte de verdade.
 - O Orquestrador mora no serviço de **Agendamento** (dono do processo de negócio), evitando um 5º serviço.
 
-> Detalhes da SAGA em [`saga-agendamento.md`](saga-agendamento.md) e do CQRS em [`cqrs-agendamento.md`](cqrs-agendamento.md) *(branch `feature/saga-cqrs`)*.
+> Detalhes da SAGA em [`saga-agendamento.md`](saga-agendamento.md) e do CQRS em [`cqrs-agendamento.md`](cqrs-agendamento.md).
