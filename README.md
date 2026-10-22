@@ -239,12 +239,12 @@ graph TB
 
 ### Padrões distribuídos (Parte 2)
 
-- **API Gateway** — ponto único de entrada, autenticação, rate limiting e roteamento para os serviços internos.
-- **2 BFFs** — `bff-web` (paciente) devolve dados simples, pessoais e acionáveis; `bff-admin` (gestor) devolve dados agregados e analíticos.
-- **Database per Service** — cada serviço com seu próprio banco; integração só por API/evento.
-- **SAGA orquestrada** — no fluxo de agendamento: `triagem → pacientes → agendamento → notificações`, com transações compensatórias.
-- **CQRS** — no serviço de Agendamento: escrita normalizada separada da leitura desnormalizada (defasagem aceitável ≤ 5s).
-- **Outbox** — publicação confiável de eventos via RabbitMQ.
+- **API Gateway** — ponto único de entrada, autenticação, rate limiting e roteamento para os serviços internos. → [`gateway-routing.md`](docs/gateway-routing.md)
+- **2 BFFs** — `bff-web` (paciente) devolve dados simples, pessoais e acionáveis; `bff-admin` (gestor) devolve dados agregados e analíticos. → [`bff-comparativo.md`](docs/bff-comparativo.md)
+- **Database per Service** — cada serviço com seu próprio banco; integração só por API/evento. → [`decomposicao-microsservicos.md`](docs/arquitetura/decomposicao-microsservicos.md)
+- **SAGA orquestrada** — no fluxo de agendamento: `triagem → pacientes → agendamento → notificações`, com transações compensatórias. → [`saga-agendamento.md`](docs/arquitetura/saga-agendamento.md)
+- **CQRS** — no serviço de Agendamento: escrita normalizada separada da leitura desnormalizada (defasagem aceitável ≤ 5s). → [`cqrs-agendamento.md`](docs/arquitetura/cqrs-agendamento.md)
+- **Outbox** — publicação confiável de eventos via RabbitMQ. → [`outbox-e-consistencia.md`](docs/decisoes-tecnicas/outbox-e-consistencia.md)
 
 <details>
 <summary>📖 SAGA — caminho feliz e cenário de falha</summary>
@@ -298,7 +298,7 @@ Requisitos previstos: **Docker** e **Docker Compose** (ambiente local).
 | Etapa | Status | Data |
 |-------|--------|------|
 | **Parte 1** — Concepção e Pitch | 🟢 Concluída | 17/09/2026 |
-| **Parte 2** — Arquitetura | ⬜ Pendente | 22–27/10/2026 |
+| **Parte 2** — Arquitetura | 🟡 Em andamento | 22–27/10/2026 |
 | **Parte 3** — Containerização e K8s | ⬜ Pendente | 17/11/2026 |
 | **Parte 4** — Sistema Funcional | ⬜ Pendente | 10–15/12/2026 |
 
@@ -319,9 +319,14 @@ Requisitos previstos: **Docker** e **Docker Compose** (ambiente local).
 | Documento | Descrição |
 |-----------|-----------|
 | [`docs/parte1_concepcao.md`](docs/parte1_concepcao.md) | Concepção, problema, impacto social e referências (Parte 1) |
-| `docs/arquitetura/` | Diagramas de componentes, comunicação e SAGA *(Parte 2)* |
-| `docs/api/` | Contratos OpenAPI dos serviços *(Parte 2)* |
-| `docs/decisoes-tecnicas.md` | Decisões de arquitetura (ADRs) *(Parte 2)* |
+| [`docs/arquitetura/decomposicao-microsservicos.md`](docs/arquitetura/decomposicao-microsservicos.md) | Bounded Contexts (DDD), componentes e comunicação REST/RabbitMQ *(Parte 2)* |
+| [`docs/arquitetura/saga-agendamento.md`](docs/arquitetura/saga-agendamento.md) | SAGA orquestrada e fluxo compensatório *(Parte 2)* |
+| [`docs/arquitetura/cqrs-agendamento.md`](docs/arquitetura/cqrs-agendamento.md) | CQRS: Write/Read Model e sincronização ≤ 5s *(Parte 2)* |
+| [`docs/gateway-routing.md`](docs/gateway-routing.md) | Rotas e políticas do API Gateway *(Parte 2)* |
+| [`docs/bff-comparativo.md`](docs/bff-comparativo.md) | Justificativa dos 2 BFFs e comparativo de payloads *(Parte 2)* |
+| [`docs/api/`](docs/api/) | Contratos OpenAPI dos 4 serviços *(Parte 2)* |
+| [`docs/decisoes-tecnicas/api-guidelines.md`](docs/decisoes-tecnicas/api-guidelines.md) | Versionamento por URI e HATEOAS *(Parte 2)* |
+| [`docs/decisoes-tecnicas/outbox-e-consistencia.md`](docs/decisoes-tecnicas/outbox-e-consistencia.md) | Consistência eventual, Dual Write e Transactional Outbox *(Parte 2)* |
 | `docs/rag-avaliacao.md` | Avaliação do pipeline RAG *(Parte 4)* |
 
 ---
