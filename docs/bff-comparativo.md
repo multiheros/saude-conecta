@@ -123,9 +123,9 @@ sequenceDiagram
     end
     Note over A: GET /admin/v1/agendamentos/resumo
     par em paralelo
-      A->>AG: agregações por UBS/período
-      A->>PA: estatísticas anonimizadas
-      A->>NO: métricas de entrega + alertas
+      A->>AG: GET /relatorios/ocupacao?ubsId&periodo
+      A->>PA: GET /pacientes/estatisticas?ubsId
+      A->>NO: GET /notificacoes/alertas
     end
 ```
 

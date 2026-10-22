@@ -78,6 +78,34 @@ paths:
                   total: { type: integer }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /pacientes/estatisticas:
+    get:
+      tags: [Pacientes]
+      summary: Estatísticas anonimizadas da população atendida (bff-admin)
+      description: |
+        Apenas contagens agregadas (LGPD): nenhum nome, CPF ou contato é retornado.
+        Grupos com menos de 5 pacientes são suprimidos para evitar reidentificação.
+      parameters:
+        - { name: ubsId, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Distribuições agregadas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ubsId: { type: string, format: uuid }
+                  totalPacientes: { type: integer }
+                  porFaixaEtaria:
+                    type: object
+                    additionalProperties: { type: integer }
+                    example: { '0-11': 410, '12-17': 220, '18-59': 2300, '60+': 900 }
+                  porBairro:
+                    type: object
+                    additionalProperties: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /pacientes/{id}:
     parameters:
       - { $ref: '#/components/parameters/PacienteId' }
