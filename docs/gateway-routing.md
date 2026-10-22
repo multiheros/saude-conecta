@@ -36,6 +36,7 @@ Os clientes **só** enxergam o Gateway. Serviços de domínio e BFFs ficam em re
 | `/api/v1/agendamentos/*`, `/slots/*`, `/escalas/*` | `agendamento:8002` | 8002 | ✅ JWT | Interno/BFF |
 | `/api/v1/triagens/*` | `triagem:8003` | 8003 | ✅ JWT | Interno/BFF |
 | `/api/v1/notificacoes/*` | `notificacoes:8004` | 8004 | ✅ JWT | Interno/BFF |
+| `/api/v1/pacientes/{id}/preferencias-notificacao` | `notificacoes:8004` | 8004 | ✅ JWT | Interno/BFF |
 | `/docs/{servico}` | Swagger UI estático | — | ✅ (apenas dev/stg) | Dev |
 
 > Os rótulos de porta são convenções do projeto (a ser fixadas no Docker Compose da Parte 3).
@@ -43,6 +44,7 @@ Os clientes **só** enxergam o Gateway. Serviços de domínio e BFFs ficam em re
 **Regras de roteamento**
 
 - Roteamento por **prefixo de path** (inclui a major: `/api/v1`, `/api/v2` → upstreams distintos). Ver [`api-guidelines.md`](decisoes-tecnicas/api-guidelines.md).
+- **Precedência:** `/api/v1/pacientes/{id}/preferencias-notificacao` pertence ao serviço de **Notificações** (dono das preferências de canal), embora o caminho comece com `/pacientes`. A rota usa *regex* com `regex_priority` maior e é avaliada antes do prefixo genérico `/api/v1/pacientes` → `pacientes`.
 - `strip_path=false`: o serviço recebe o caminho completo, mantendo paridade com o OpenAPI.
 - `/web/*` e `/admin/*` são rotas separadas porque os BFFs têm perfis distintos (ver [`bff-comparativo.md`](bff-comparativo.md)).
 - Chamadas `/api/v1/*` diretas por clientes externos são limitadas a recursos que o perfil permite (ACL por rota/claim); o caminho preferencial é via BFF.
@@ -57,6 +59,16 @@ services:
     routes:
       - name: agendamento-v1
         paths: [/api/v1/agendamentos, /api/v1/slots, /api/v1/escalas]
+        strip_path: false
+  - name: notificacoes
+    url: http://notificacoes:8004
+    routes:
+      - name: notificacoes-preferencias-v1
+        paths: ["~/api/v1/pacientes/[^/]+/preferencias-notificacao$"]
+        regex_priority: 10        # vence o prefixo /api/v1/pacientes
+        strip_path: false
+      - name: notificacoes-v1
+        paths: [/api/v1/notificacoes]
         strip_path: false
   - name: bff-web
     url: http://bff-web:3001
