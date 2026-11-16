@@ -2,7 +2,9 @@
 
 > *Conectando comunidades à saúde que precisam*
 
-`GCC129 — Sistemas Distribuídos` · `UFLA · 2026/2` · `Parte 1 — Concluída ✅`
+`GCC129 — Sistemas Distribuídos` · `UFLA · 2026/2` · `Parte 2 — Arquitetura`
+
+**[📖 Visão geral](#-visão-geral)** · **[🏗️ Arquitetura](ARCHITECTURE.md)** · **[📂 Documentação](docs/)** · **[🚀 Como executar](#-como-executar)**
 
 **Repositório:** [github.com/multiheros/saude-conecta](https://github.com/multiheros/saude-conecta)
 
@@ -19,7 +21,7 @@
 | 5 | [Fundamentação](#-fundamentação) |
 | 6 | [Impacto Social](#-impacto-social) |
 | 7 | [A Solução](#-a-solução) |
-| 8 | [Arquitetura](#️-arquitetura) |
+| 8 | [Arquitetura](#️-arquitetura) → completa em [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | 9 | [Como Executar](#-como-executar) |
 | 10 | [Status das Etapas](#-status-das-etapas) |
 | 11 | [Governança Git](#-governança-git) |
@@ -183,105 +185,34 @@ O **SaúdeConecta** é uma plataforma de **agendamento inteligente e triagem ass
 
 ## 🏗️ Arquitetura
 
+> 📐 **A arquitetura completa está em [`ARCHITECTURE.md`](ARCHITECTURE.md)**: decomposição, comunicação, Outbox, Gateway, BFFs, contratos, SAGA e CQRS, cada um com seu diagrama e o link para o documento detalhado.
+
 Arquitetura de **microsserviços** com **Database per Service**, comunicação síncrona (REST) e assíncrona (RabbitMQ).
 
 ```mermaid
-graph TB
-    subgraph Clientes
-        WEB["🌐 App Web<br/>(Pacientes)"]
-        ADMIN["📊 Painel Admin<br/>(Gestores)"]
-    end
-
-    subgraph "Camada de Entrada"
-        GW["🚪 API Gateway"]
-        BFF_P["📱 BFF Pacientes"]
-        BFF_G["📊 BFF Gestores"]
-    end
-
-    subgraph "Microsserviços de Domínio"
-        MS1["👤 Serviço de<br/>Pacientes"]
-        MS2["📅 Serviço de<br/>Agendamento"]
-        MS3["🤖 Serviço de<br/>Triagem IA"]
-        MS4["📧 Serviço de<br/>Notificações"]
-    end
-
-    subgraph Dados
-        DB1[("🐘 PostgreSQL<br/>Pacientes")]
-        DB2[("🐘 PostgreSQL<br/>Agendamento")]
-        DB3[("🍃 MongoDB<br/>Triagem")]
-        VDB[("🔍 ChromaDB<br/>Vetorial")]
-        DB4[("🔴 Redis<br/>Notificações")]
-    end
-
-    MQ["🐰 RabbitMQ"]
-
-    WEB --> GW
-    ADMIN --> GW
-    GW --> BFF_P
-    GW --> BFF_G
-    BFF_P --> MS1 & MS2 & MS3
-    BFF_G --> MS1 & MS2 & MS4
-    MS1 --> DB1
-    MS2 --> DB2
-    MS3 --> DB3 & VDB
-    MS4 --> DB4
-    MS1 & MS2 & MS3 & MS4 <--> MQ
+graph LR
+    C["🌐 App Web · 📊 Painel Admin"] --> GW["🚪 API Gateway"]
+    GW --> BW["📱 bff-web"] & BA["📊 bff-admin"]
+    BW & BA --> S["👤 Pacientes · 📅 Agendamento · 🤖 Triagem IA · 📧 Notificações"]
+    S --> D[("1 banco por serviço")]
+    S <--> MQ{{"🐰 RabbitMQ"}}
 ```
-
-### Os 4 microsserviços
 
 | Serviço | Responsabilidade | Banco |
 |---------|------------------|-------|
 | **Pacientes** | Cadastro, autenticação, perfil, histórico | PostgreSQL |
-| **Agendamento** | Slots, reservas, disponibilidade, escalas | PostgreSQL |
+| **Agendamento** | Slots, reservas, disponibilidade, escalas | PostgreSQL + Read Model (MongoDB/Redis) |
 | **Triagem IA** | Classificação de urgência (LLM + RAG), orientação | MongoDB + ChromaDB |
 | **Notificações** | Lembretes, confirmações, alertas | Redis |
 
-### Padrões distribuídos (Parte 2)
-
-- **API Gateway** — ponto único de entrada, autenticação, rate limiting e roteamento para os serviços internos. → [`gateway-routing.md`](docs/gateway-routing.md)
-- **2 BFFs** — `bff-web` (paciente) devolve dados simples, pessoais e acionáveis; `bff-admin` (gestor) devolve dados agregados e analíticos. → [`bff-comparativo.md`](docs/bff-comparativo.md)
-- **Database per Service** — cada serviço com seu próprio banco; integração só por API/evento. → [`decomposicao-microsservicos.md`](docs/arquitetura/decomposicao-microsservicos.md)
-- **SAGA orquestrada** — no fluxo de agendamento: `triagem → pacientes → agendamento → notificações`, com transações compensatórias. → [`saga-agendamento.md`](docs/arquitetura/saga-agendamento.md)
-- **CQRS** — no serviço de Agendamento: escrita normalizada separada da leitura desnormalizada (defasagem aceitável ≤ 5s). → [`cqrs-agendamento.md`](docs/arquitetura/cqrs-agendamento.md)
-- **Outbox** — publicação confiável de eventos via RabbitMQ. → [`outbox-e-consistencia.md`](docs/decisoes-tecnicas/outbox-e-consistencia.md)
-
-<details>
-<summary>📖 SAGA — caminho feliz e cenário de falha</summary>
-
-**Caminho feliz**
-
-```mermaid
-sequenceDiagram
-    participant P as Paciente
-    participant O as Orquestrador
-    participant TR as Triagem IA
-    participant PA as Pacientes
-    participant AG as Agendamento
-    participant NO as Notificações
-
-    P->>O: Solicita agendamento
-    O->>TR: 1. Classificar urgência (sintomas)
-    TR-->>O: Classificação (ex.: AMARELO)
-    O->>PA: 2. Validar paciente
-    PA-->>O: Paciente válido ✅
-    O->>AG: 3. Reservar slot
-    AG-->>O: Slot reservado ✅
-    O->>NO: 4. Enviar confirmação + lembrete
-    NO-->>O: Notificação agendada ✅
-    O-->>P: Consulta agendada com sucesso
-```
-
-**Compensações (todos os passos têm reversão)**
-
-| Passo | Ação | Compensação |
-|-------|------|-------------|
-| 1. Triagem | Classificar urgência | Descartar classificação temporária |
-| 2. Pacientes | Validar e marcar "agendamento em andamento" | Reverter flag |
-| 3. Agendamento | Reservar slot | Liberar slot reservado |
-| 4. Notificações | Agendar confirmação | Cancelar notificação agendada |
-
-</details>
+| Padrão | Problema que resolve | Na arquitetura |
+|--------|---------------------|----------------|
+| Database per Service | Autonomia dos serviços | [§4](ARCHITECTURE.md#4-database-per-service-e-outbox) |
+| Outbox | Evento nunca se perde | [§4](ARCHITECTURE.md#4-database-per-service-e-outbox) |
+| API Gateway | Entrada única e segura | [§5](ARCHITECTURE.md#5-api-gateway) |
+| 2 BFFs | Resposta sob medida para cada usuário | [§6](ARCHITECTURE.md#6-backend-for-frontend-2-bffs) |
+| SAGA orquestrada | Consistência entre serviços, com desfazer | [§8](ARCHITECTURE.md#8-saga-orquestrada) |
+| CQRS | Leitura rápida, defasagem ≤ 5 s | [§9](ARCHITECTURE.md#9-cqrs) |
 
 ---
 
@@ -318,6 +249,7 @@ Requisitos previstos: **Docker** e **Docker Compose** (ambiente local).
 
 | Documento | Descrição |
 |-----------|-----------|
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Visão de arquitetura (Parte 2)** — ponto de partida |
 | [`docs/parte1_concepcao.md`](docs/parte1_concepcao.md) | Concepção, problema, impacto social e referências (Parte 1) |
 | [`docs/arquitetura/decomposicao-microsservicos.md`](docs/arquitetura/decomposicao-microsservicos.md) | Bounded Contexts (DDD), componentes e comunicação REST/RabbitMQ *(Parte 2)* |
 | [`docs/arquitetura/saga-agendamento.md`](docs/arquitetura/saga-agendamento.md) | SAGA orquestrada e fluxo compensatório *(Parte 2)* |
