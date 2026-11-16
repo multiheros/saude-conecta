@@ -276,7 +276,7 @@ Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, 
 | Etapa | Status | Data |
 |-------|--------|------|
 | **Parte 1** — Concepção e Pitch | 🟢 Concluída | 17/09/2026 |
-| **Parte 2** — Arquitetura | 🟡 Em andamento | 22–27/10/2026 |
+| **Parte 2** — Arquitetura | 🟢 Concluída | 22–27/10/2026 |
 | **Parte 3** — Containerização e K8s | 🟡 Em andamento | 17/11/2026 |
 | **Parte 4** — Sistema Funcional | ⬜ Pendente | 10–15/12/2026 |
 
