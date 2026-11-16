@@ -218,9 +218,56 @@ graph LR
 
 ## 🚀 Como Executar
 
-> ⚠️ **Em desenvolvimento.** As instruções completas (Docker Compose e Kubernetes) serão adicionadas na **Parte 3**.
+> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/health` + alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A lógica de domínio (SAGA, CQRS, RAG) entra na Parte 4.
 
-Requisitos previstos: **Docker** e **Docker Compose** (ambiente local).
+**Requisitos:** Docker 24+ com Compose v2. Para Kubernetes: `kubectl` e [`kind`](https://kind.sigs.k8s.io).
+
+### Docker Compose (um comando)
+
+```bash
+docker compose up -d --build
+```
+
+Entrada única pelo gateway: `http://localhost:8080`
+
+```bash
+curl http://localhost:8080/web/v1/home       # BFF do paciente (dados simples)
+curl http://localhost:8080/admin/v1/painel   # BFF do gestor (dados agregados)
+curl http://localhost:8080/api/v1/pacientes/1  # recurso com HATEOAS (_links)
+```
+
+```bash
+docker compose down        # para (mantém os volumes)
+docker compose down -v     # para e apaga os volumes
+```
+
+### Kubernetes (kind)
+
+```bash
+# 1. cluster local com o Ingress exposto em http://localhost:8081
+kind create cluster --config k8s/cluster/kind-config.yaml
+
+# 2. imagens (build local e carga no cluster)
+for s in pacientes agendamento triagem notificacoes; do docker build -t saudeconecta/$s:1.0 services/$s; done
+docker build -t saudeconecta/bff-web:1.0 bff/web
+docker build -t saudeconecta/bff-admin:1.0 bff/admin
+for i in pacientes agendamento triagem notificacoes bff-web bff-admin; do kind load docker-image saudeconecta/$i:1.0 --name saudeconecta; done
+
+# 3. Ingress controller
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml
+kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=180s
+
+# 4. aplicação
+kubectl apply -f k8s/00-namespace.yaml
+kubectl apply -f k8s/
+kubectl -n saudeconecta get pods
+
+# 5. teste e escalabilidade
+curl http://localhost:8081/web/v1/home
+kubectl -n saudeconecta scale deploy/bff-web --replicas=4
+```
+
+Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, imagens e manifestos em [`docs/containerizacao.md`](docs/containerizacao.md).
 
 ---
 
@@ -230,7 +277,7 @@ Requisitos previstos: **Docker** e **Docker Compose** (ambiente local).
 |-------|--------|------|
 | **Parte 1** — Concepção e Pitch | 🟢 Concluída | 17/09/2026 |
 | **Parte 2** — Arquitetura | 🟡 Em andamento | 22–27/10/2026 |
-| **Parte 3** — Containerização e K8s | ⬜ Pendente | 17/11/2026 |
+| **Parte 3** — Containerização e K8s | 🟡 Em andamento | 17/11/2026 |
 | **Parte 4** — Sistema Funcional | ⬜ Pendente | 10–15/12/2026 |
 
 ---
