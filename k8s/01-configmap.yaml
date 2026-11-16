@@ -1,0 +1,21 @@
+# Configuracao nao sensivel, injetada como variaveis de ambiente.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: saudeconecta-config
+  namespace: saudeconecta
+data:
+  PACIENTES_URL: http://pacientes:8001
+  AGENDAMENTO_URL: http://agendamento:8002
+  NOTIFICACOES_URL: http://notificacoes:8004
+  TRIAGEM_URL: http://triagem:8003
+  RABBITMQ_HOST: rabbitmq
+  # Host/porta do banco proprio de cada servico (Database per Service)
+  PACIENTES_DB_HOST: db-pacientes
+  PACIENTES_DB_PORT: "5432"
+  AGENDAMENTO_DB_HOST: db-agendamento
+  AGENDAMENTO_DB_PORT: "5432"
+  TRIAGEM_DB_HOST: db-triagem
+  TRIAGEM_DB_PORT: "27017"
+  NOTIFICACOES_DB_HOST: db-notificacoes
+  NOTIFICACOES_DB_PORT: "6379"

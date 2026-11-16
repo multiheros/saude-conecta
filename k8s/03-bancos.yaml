@@ -1,0 +1,146 @@
+---
+apiVersion: v1
+kind: Service
+metadata: { name: db-pacientes, namespace: saudeconecta }
+spec:
+  clusterIP: None
+  selector: { app: db-pacientes }
+  ports: [{ port: 5432 }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: db-pacientes, namespace: saudeconecta }
+spec:
+  serviceName: db-pacientes
+  replicas: 1
+  selector: { matchLabels: { app: db-pacientes } }
+  template:
+    metadata: { labels: { app: db-pacientes, camada: dados } }
+    spec:
+      containers:
+        - name: db-pacientes
+          image: postgres:16-alpine
+          ports: [{ containerPort: 5432 }]
+          env:
+            - { name: POSTGRES_DB, value: pacientes }
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: saudeconecta-secrets, key: PACIENTES_DB_USER } }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: saudeconecta-secrets, key: PACIENTES_DB_PASSWORD } }
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+          readinessProbe:
+            tcpSocket: { port: 5432 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 1Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: db-agendamento, namespace: saudeconecta }
+spec:
+  clusterIP: None
+  selector: { app: db-agendamento }
+  ports: [{ port: 5432 }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: db-agendamento, namespace: saudeconecta }
+spec:
+  serviceName: db-agendamento
+  replicas: 1
+  selector: { matchLabels: { app: db-agendamento } }
+  template:
+    metadata: { labels: { app: db-agendamento, camada: dados } }
+    spec:
+      containers:
+        - name: db-agendamento
+          image: postgres:16-alpine
+          ports: [{ containerPort: 5432 }]
+          env:
+            - { name: POSTGRES_DB, value: agendamento }
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: saudeconecta-secrets, key: AGENDAMENTO_DB_USER } }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: saudeconecta-secrets, key: AGENDAMENTO_DB_PASSWORD } }
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+          readinessProbe:
+            tcpSocket: { port: 5432 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 1Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: db-triagem, namespace: saudeconecta }
+spec:
+  clusterIP: None
+  selector: { app: db-triagem }
+  ports: [{ port: 27017 }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: db-triagem, namespace: saudeconecta }
+spec:
+  serviceName: db-triagem
+  replicas: 1
+  selector: { matchLabels: { app: db-triagem } }
+  template:
+    metadata: { labels: { app: db-triagem, camada: dados } }
+    spec:
+      containers:
+        - name: db-triagem
+          image: mongo:7
+          ports: [{ containerPort: 27017 }]
+
+          volumeMounts: [{ name: data, mountPath: /data/db }]
+          readinessProbe:
+            tcpSocket: { port: 27017 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 1Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: db-notificacoes, namespace: saudeconecta }
+spec:
+  clusterIP: None
+  selector: { app: db-notificacoes }
+  ports: [{ port: 6379 }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: db-notificacoes, namespace: saudeconecta }
+spec:
+  serviceName: db-notificacoes
+  replicas: 1
+  selector: { matchLabels: { app: db-notificacoes } }
+  template:
+    metadata: { labels: { app: db-notificacoes, camada: dados } }
+    spec:
+      containers:
+        - name: db-notificacoes
+          image: redis:7-alpine
+          ports: [{ containerPort: 6379 }]
+
+          volumeMounts: [{ name: data, mountPath: /data }]
+          readinessProbe:
+            tcpSocket: { port: 6379 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 1Gi } }
