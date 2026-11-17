@@ -1,0 +1,220 @@
+---
+apiVersion: v1
+kind: Service
+metadata: { name: pacientes, namespace: saudeconecta }
+spec:
+  selector: { app: pacientes }
+  ports: [{ port: 8001, targetPort: 8001 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: pacientes, namespace: saudeconecta }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: pacientes } }
+  template:
+    metadata: { labels: { app: pacientes, camada: dominio } }
+    spec:
+      containers:
+        - name: pacientes
+          image: saudeconecta/pacientes:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8001 }]
+          envFrom: [{ configMapRef: { name: saudeconecta-config } }]
+          env:
+            - name: DB_HOST
+              valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: PACIENTES_DB_HOST } }
+            - name: DB_PORT
+              valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: PACIENTES_DB_PORT } }
+          readinessProbe:
+            httpGet: { path: /health, port: 8001 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8001 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: agendamento, namespace: saudeconecta }
+spec:
+  selector: { app: agendamento }
+  ports: [{ port: 8002, targetPort: 8002 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: agendamento, namespace: saudeconecta }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: agendamento } }
+  template:
+    metadata: { labels: { app: agendamento, camada: dominio } }
+    spec:
+      containers:
+        - name: agendamento
+          image: saudeconecta/agendamento:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8002 }]
+          envFrom: [{ configMapRef: { name: saudeconecta-config } }]
+          env:
+            - name: DB_HOST
+              valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: AGENDAMENTO_DB_HOST } }
+            - name: DB_PORT
+              valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: AGENDAMENTO_DB_PORT } }
+          readinessProbe:
+            httpGet: { path: /health, port: 8002 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8002 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: triagem, namespace: saudeconecta }
+spec:
+  selector: { app: triagem }
+  ports: [{ port: 8003, targetPort: 8003 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: triagem, namespace: saudeconecta }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: triagem } }
+  template:
+    metadata: { labels: { app: triagem, camada: dominio } }
+    spec:
+      containers:
+        - name: triagem
+          image: saudeconecta/triagem:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8003 }]
+          envFrom: [{ configMapRef: { name: saudeconecta-config } }]
+          env:
+            - name: DB_HOST
+              valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: TRIAGEM_DB_HOST } }
+            - name: DB_PORT
+              valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: TRIAGEM_DB_PORT } }
+          readinessProbe:
+            httpGet: { path: /health, port: 8003 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8003 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: notificacoes, namespace: saudeconecta }
+spec:
+  selector: { app: notificacoes }
+  ports: [{ port: 8004, targetPort: 8004 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: notificacoes, namespace: saudeconecta }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: notificacoes } }
+  template:
+    metadata: { labels: { app: notificacoes, camada: dominio } }
+    spec:
+      containers:
+        - name: notificacoes
+          image: saudeconecta/notificacoes:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8004 }]
+          envFrom: [{ configMapRef: { name: saudeconecta-config } }]
+          env:
+            - name: DB_HOST
+              valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: NOTIFICACOES_DB_HOST } }
+            - name: DB_PORT
+              valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: NOTIFICACOES_DB_PORT } }
+          readinessProbe:
+            httpGet: { path: /health, port: 8004 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8004 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: bff-web, namespace: saudeconecta }
+spec:
+  selector: { app: bff-web }
+  ports: [{ port: 3001, targetPort: 3001 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: bff-web, namespace: saudeconecta }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: bff-web } }
+  template:
+    metadata: { labels: { app: bff-web, camada: borda } }
+    spec:
+      containers:
+        - name: bff-web
+          image: saudeconecta/bff-web:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 3001 }]
+          envFrom: [{ configMapRef: { name: saudeconecta-config } }]
+
+          readinessProbe:
+            httpGet: { path: /health, port: 3001 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 3001 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: bff-admin, namespace: saudeconecta }
+spec:
+  selector: { app: bff-admin }
+  ports: [{ port: 3002, targetPort: 3002 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: bff-admin, namespace: saudeconecta }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: bff-admin } }
+  template:
+    metadata: { labels: { app: bff-admin, camada: borda } }
+    spec:
+      containers:
+        - name: bff-admin
+          image: saudeconecta/bff-admin:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 3002 }]
+          envFrom: [{ configMapRef: { name: saudeconecta-config } }]
+
+          readinessProbe:
+            httpGet: { path: /health, port: 3002 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 3002 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }

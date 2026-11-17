@@ -1,0 +1,145 @@
+# SaudeConecta - stack completa (Parte 3)
+# Sobe tudo com:  docker compose up -d --build
+# Entrada unica: http://localhost:8080
+
+x-node-service: &svc-defaults
+  restart: unless-stopped
+
+services:
+  # ---------- Borda ----------
+  gateway:
+    build: ./gateway
+    ports: ["8080:80"]
+    networks: [frontend, backend]
+    depends_on: [bff-web, bff-admin, pacientes, agendamento, triagem, notificacoes]
+    restart: unless-stopped
+
+  bff-web:
+    build: ./bff/web
+    <<: *svc-defaults
+    environment:
+      PACIENTES_URL: http://pacientes:8001
+      AGENDAMENTO_URL: http://agendamento:8002
+    networks: [frontend, backend]
+    depends_on: [pacientes, agendamento]
+
+  bff-admin:
+    build: ./bff/admin
+    <<: *svc-defaults
+    environment:
+      PACIENTES_URL: http://pacientes:8001
+      AGENDAMENTO_URL: http://agendamento:8002
+      NOTIFICACOES_URL: http://notificacoes:8004
+    networks: [frontend, backend]
+    depends_on: [pacientes, agendamento, notificacoes]
+
+  # ---------- Servicos de dominio (cada um com seu banco) ----------
+  pacientes:
+    build: ./services/pacientes
+    <<: *svc-defaults
+    environment: { DB_HOST: db-pacientes, DB_PORT: "5432" }
+    networks: [backend, data]
+    depends_on: { db-pacientes: { condition: service_healthy } }
+
+  agendamento:
+    build: ./services/agendamento
+    <<: *svc-defaults
+    environment: { DB_HOST: db-agendamento, DB_PORT: "5432" }
+    networks: [backend, data]
+    depends_on: { db-agendamento: { condition: service_healthy } }
+
+  triagem:
+    build: ./services/triagem
+    <<: *svc-defaults
+    environment: { DB_HOST: db-triagem, DB_PORT: "27017" }
+    networks: [backend, data]
+    depends_on: { db-triagem: { condition: service_healthy } }
+
+  notificacoes:
+    build: ./services/notificacoes
+    <<: *svc-defaults
+    environment: { DB_HOST: db-notificacoes, DB_PORT: "6379" }
+    networks: [backend, data]
+    depends_on: { db-notificacoes: { condition: service_healthy } }
+
+  # ---------- Bancos: instancias separadas, volume proprio ----------
+  db-pacientes:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pacientes
+      POSTGRES_USER: ${PACIENTES_DB_USER:-pacientes}
+      POSTGRES_PASSWORD: ${PACIENTES_DB_PASSWORD:-troque-me-pacientes}
+    volumes: [pacientes-data:/var/lib/postgresql/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d pacientes"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  db-agendamento:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: agendamento
+      POSTGRES_USER: ${AGENDAMENTO_DB_USER:-agendamento}
+      POSTGRES_PASSWORD: ${AGENDAMENTO_DB_PASSWORD:-troque-me-agendamento}
+    volumes: [agendamento-data:/var/lib/postgresql/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d agendamento"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  db-triagem:
+    image: mongo:7
+    volumes: [triagem-data:/data/db]
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  db-notificacoes:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [notificacoes-data:/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ---------- Mensageria ----------
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-saude}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-troque-me-rabbit}
+    volumes: [rabbitmq-data:/var/lib/rabbitmq]
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+# Tres camadas de rede:
+#  - frontend: gateway <-> BFFs (unica com porta publicada, via gateway)
+#  - backend : gateway/BFFs <-> servicos de dominio <-> RabbitMQ
+#  - data    : servicos <-> bancos. `internal: true` => sem saida para fora e
+#              inalcancavel pelo gateway e pelos BFFs.
+networks:
+  frontend:
+  backend:
+  data:
+    internal: true
+
+volumes:
+  pacientes-data:
+  agendamento-data:
+  triagem-data:
+  notificacoes-data:
+  rabbitmq-data:
