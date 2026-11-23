@@ -2,9 +2,9 @@
 
 > *Conectando comunidades à saúde que precisam*
 
-`GCC129 — Sistemas Distribuídos` · `UFLA · 2026/2` · `Parte 2 — Arquitetura`
+`GCC129 — Sistemas Distribuídos` · `UFLA · 2026/2` · `Parte 3 — Containerização e Orquestração`
 
-**[📖 Visão geral](#-visão-geral)** · **[🏗️ Arquitetura](ARCHITECTURE.md)** · **[📂 Documentação](docs/)** · **[🚀 Como executar](#-como-executar)**
+**[📖 Visão geral](#-visão-geral)** · **[🏗️ Arquitetura](ARCHITECTURE.md)** · **[📂 Documentação](docs/)** · **[🚀 Como executar](#-como-executar)** · **[🎬 Vídeo da Parte 3](https://youtu.be/KnB0XyP8xoM)**
 
 **Repositório:** [github.com/multiheros/saude-conecta](https://github.com/multiheros/saude-conecta)
 
@@ -218,6 +218,12 @@ graph LR
 
 ## 🚀 Como Executar
 
+### 🎬 Vídeo da Parte 3
+
+Demonstração do sistema sendo levantado com Docker Compose e Kubernetes (Dockerfiles, redes, volumes, ConfigMap/Secret, Ingress e escalabilidade):
+
+**[▶️ Assistir no YouTube](https://youtu.be/KnB0XyP8xoM)**
+
 > Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/health` + alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A lógica de domínio (SAGA, CQRS, RAG) entra na Parte 4.
 
 **Requisitos:** Docker 24+ com Compose v2. Para Kubernetes: `kubectl` e [`kind`](https://kind.sigs.k8s.io).
@@ -277,7 +283,7 @@ Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, 
 |-------|--------|------|
 | **Parte 1** — Concepção e Pitch | 🟢 Concluída | 17/09/2026 |
 | **Parte 2** — Arquitetura | 🟢 Concluída | 22–27/10/2026 |
-| **Parte 3** — Containerização e K8s | 🟡 Em andamento | 17/11/2026 |
+| **Parte 3** — Containerização e K8s | 🟢 Concluída | 17/11/2026 |
 | **Parte 4** — Sistema Funcional | ⬜ Pendente | 10–15/12/2026 |
 
 ---
