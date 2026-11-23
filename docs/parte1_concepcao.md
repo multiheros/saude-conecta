@@ -11,11 +11,11 @@
 
 ### Integrantes
 
-| Nome | Matrícula | GitHub |
-|------|-----------|--------|
-| Jonathan Nascimento Carvalho | [Matrícula] | [@multiheros](https://github.com/multiheros) |
-| Maria Lina da Silva | [Matrícula] | [@Marialinaa](https://github.com/Marialinaa) |
-| Matheus Gomes | [Matrícula] | [@MatheusssGM](https://github.com/MatheusssGM) |
+| Nome | GitHub |
+|------|--------|
+| Jonathan Nascimento Carvalho | [@multiheros](https://github.com/multiheros) |
+| Maria Lina da Silva | [@Marialinaa](https://github.com/Marialinaa) |
+| Matheus Gomes | [@MatheusssGM](https://github.com/MatheusssGM) |
 
 ---
 
@@ -170,5 +170,5 @@ Cada serviço terá seu próprio banco de dados, comunicação assíncrona via m
 
 - **URL:** [https://github.com/multiheros/saude-conecta](https://github.com/multiheros/saude-conecta)
 - **Visibilidade:** Público
-- **Contribuidores:** 4 integrantes configurados
+- **Contribuidores:** os 3 integrantes do grupo
 - **Estrutura:** README.md + `/docs` (a ser expandido na Parte 2)

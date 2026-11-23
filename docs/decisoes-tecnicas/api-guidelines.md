@@ -17,10 +17,10 @@ Todos os contratos incluem, além dos endpoints de negócio, os endpoints **da S
 
 | Passo | Serviço | Ação | Compensação |
 |-------|---------|------|-------------|
-| 1 | Triagem | `POST /triagens` | `DELETE /triagens/{id}` |
-| 2 | Pacientes | `POST /pacientes/{id}/validacao` | `DELETE /pacientes/{id}/validacao` |
-| 3 | Agendamento | `POST /slots/{id}/reserva` | `DELETE /slots/{id}/reserva` |
-| 4 | Notificações | `POST /notificacoes` | `DELETE /notificacoes/{id}` |
+| 1 | Triagem | `POST /triagens` | `DELETE /triagens?sagaId=` |
+| 2 | Pacientes | `POST /pacientes/{id}/validacao` | `DELETE /pacientes/{id}/validacao` + `X-Saga-Id` |
+| 3 | Agendamento | Transação local (sem endpoint) | Transação local |
+| 4 | Notificações | `POST /notificacoes` | `DELETE /notificacoes?sagaId=` |
 
 ## 2. Versionamento — URI Pathing
 

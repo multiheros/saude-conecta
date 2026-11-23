@@ -70,7 +70,7 @@ graph TB
     MS2 --> RM
     MS3 --> DB3 & VDB
     MS4 --> DB4
-    MS1 & MS2 & MS4 <--> MQ
+    MS1 & MS2 & MS3 & MS4 <--> MQ
 ```
 
 > **Princípio central:** nenhum serviço lê o banco do outro. A integração acontece **só por API ou por evento**.
@@ -117,7 +117,7 @@ graph TB
 | Garantia | *At-least-once* → consumidores **idempotentes** |
 | Falhas | Retry exponencial + DLQ |
 
-> Se **Notificações** cair, o paciente continua agendando: o evento fica na fila até o serviço voltar.
+> Se um **consumidor de eventos** cair, as mensagens esperam na fila até ele voltar. Já o passo 4 da SAGA (agendar a notificação) é **síncrono**: com Notificações fora, novos agendamentos são **compensados**, não ficam pela metade.
 
 ---
 
@@ -139,7 +139,8 @@ Cada banco é uma **instância própria**, com volume e credenciais exclusivos. 
 | Origem → destino | Mecanismo | SLA (p95) |
 |------------------|-----------|-----------|
 | Agendamento → Read Model | `SlotReservado` via Outbox | **≤ 5 s** |
-| Agendamento → Notificações | `AgendamentoCriado` | ≤ 30 s |
+| Agendamento → Pacientes e Triagem (fim da SAGA) | `AgendamentoCriado` | ≤ 10 s |
+| Agendamento → Notificações | `AgendamentoCancelado`, `AgendamentoReagendado` | ≤ 10 s |
 | Agendamento → Pacientes (histórico) | `AtendimentoRealizado` | ≤ 60 s |
 | Pacientes → Agendamento (dados de exibição) | `PacienteAtualizado` | ≤ 60 s |
 
@@ -324,7 +325,7 @@ sequenceDiagram
     AG--xO: ❌ 409 Slot indisponível
     Note over O: COMPENSANDO (desfaz 2 → 1)
     O->>PA: ↩ DELETE /pacientes/{id}/validacao
-    O->>TR: ↩ DELETE /triagens/{id}
+    O->>TR: ↩ DELETE /triagens?sagaId=
     O-->>P: Não foi possível agendar — escolha outro horário
 ```
 
@@ -332,14 +333,14 @@ sequenceDiagram
 
 | Passo | Ação | Compensação |
 |-------|------|-------------|
-| 1. Triagem | Classificar urgência | `DELETE /triagens/{id}` — descartar classificação |
-| 2. Pacientes | Validar e marcar "agendamento em andamento" | `DELETE /pacientes/{id}/validacao` — reverter flag |
-| 3. Agendamento | Reservar slot | `DELETE /slots/{id}/reserva` — liberar slot |
-| 4. Notificações | Agendar confirmação | `DELETE /notificacoes/{id}` — cancelar notificação |
+| 1. Triagem | Classificar urgência | `DELETE /triagens?sagaId=` — descartar classificação |
+| 2. Pacientes | Validar e marcar "agendamento em andamento" | `DELETE /pacientes/{id}/validacao` + `X-Saga-Id` — reverter flag |
+| 3. Agendamento | Reservar slot (transação local) | Liberar slot (transação local) |
+| 4. Notificações | Agendar confirmação e lembretes | `DELETE /notificacoes?sagaId=` — cancelar todas |
 
 </details>
 
-> **Regra:** só se desfaz o que foi feito, na ordem contrária. Compensações são idempotentes; se esgotarem as tentativas, a SAGA vai para `COMPENSACAO_PENDENTE` e gera alerta.
+> **Regra:** só se desfaz o que foi feito **por aquela SAGA**, na ordem contrária. Compensações são idempotentes; se esgotarem as tentativas, a SAGA vai para `COMPENSACAO_PENDENTE` e gera alerta.
 
 📄 Detalhes: [`saga-agendamento.md`](docs/arquitetura/saga-agendamento.md) — comparativo completo, falha no passo 4 (cascata 3 → 2 → 1) e estados da SAGA.
 

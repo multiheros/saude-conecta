@@ -36,7 +36,7 @@ flowchart LR
     BFF["bff-web / bff-admin"]
 
     subgraph CMD["Lado de Escrita (Command)"]
-      CAPI["Command API<br/>POST/DELETE /slots, /agendamentos/..."]
+      CAPI["Command API<br/>POST /agendamentos/..., /escalas"]
       WM[("PostgreSQL — Write Model<br/>ACID<br/>slots · agendamentos · saga_instances · outbox_events")]
       POLL["Outbox Poller"]
     end
@@ -140,8 +140,8 @@ sequenceDiagram
     POL->>MQ: publish SlotReservado + confirm
     POL->>PG: status = PUBLISHED
     MQ->>PRJ: entrega (fila agendamento.projetor)
-    PRJ->>PRJ: dedup por eventId; ignora se aggregateVersion <= atual
-    PRJ->>MG: upsert agendamentos_view; $inc ocupacao_ubs
+    PRJ->>PRJ: dedup por eventId, ignora se aggregateVersion <= atual
+    PRJ->>MG: upsert agendamentos_view e $inc ocupacao_ubs
     PRJ->>RD: remove slot do set de livres
     PRJ->>MQ: ack
     Note over PG,RD: t ≤ 5 s (SLA)
@@ -153,11 +153,17 @@ sequenceDiagram
 
 | Evento | Efeito na projeção |
 |--------|-------------------|
-| `SlotReservado` | Cria/atualiza `agendamentos_view`; remove slot de `slots:*`; `ocupacao_ubs.reservados += 1` |
+| `AgendamentoSolicitado` | Cria `agendamentos_view` em `PENDENTE` |
+| `SlotReservado` | Remove slot de `slots:*`; `ocupacao_ubs.reservados += 1` |
+| `SlotLiberado` | Devolve slot a `slots:*`; `reservados -= 1` |
+| `AgendamentoCriado` | `status = AGENDADO`, com urgência |
 | `AgendamentoConfirmado` | `status = CONFIRMADO` |
-| `AgendamentoCancelado` / `SlotLiberado` | `status = CANCELADO`; devolve slot ao Redis; `reservados -= 1` |
+| `AgendamentoReagendado` | Troca o horário do agendamento (os slots vêm em `SlotLiberado` + `SlotReservado`) |
+| `AgendamentoCancelado` | `status = CANCELADO`, com `motivo` |
 | `AtendimentoRealizado` / `FaltaRegistrada` | Atualiza status e absenteísmo |
 | `EscalaCriada` | Carrega novos slots livres |
+
+> Cada evento altera **uma** coisa: contadores de vaga só mudam em `SlotReservado`/`SlotLiberado`, e status só nos eventos `Agendamento*`. Assim um cancelamento não devolve a mesma vaga duas vezes.
 
 ### 5.2 Orçamento de latência — SLA ≤ 5 s (p95)
 

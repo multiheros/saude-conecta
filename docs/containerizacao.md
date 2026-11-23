@@ -14,7 +14,7 @@ Como o sistema roda em containers (Docker Compose) e no cluster (Kubernetes), e 
 **Multi-stage — ganho:**
 - *Node:* o estágio `deps` roda `npm ci --omit=dev`; a imagem final recebe só `node_modules` de produção e o código, sem cache do npm. Alterar só o código reaproveita a camada de dependências (build mais rápido).
 - *Python:* o estágio `builder` instala os pacotes em `/install`; a imagem final copia só esse prefixo, sem pip e sem arquivos de build.
-- Todas rodam como **usuário não-root** e têm `HEALTHCHECK` apontando para `/health`.
+- Todas rodam como **usuário não-root** e têm `HEALTHCHECK` apontando para `/ready`.
 - O gateway tem estágio único porque só copia arquivos de configuração: não há etapa de build para separar.
 
 Cada serviço tem `.dockerignore` para não enviar `node_modules` nem arquivos desnecessários ao contexto de build.
@@ -39,11 +39,17 @@ Cada serviço tem `.dockerignore` para não enviar `node_modules` nem arquivos d
 |------|----------------|------------|
 | `frontend` | gateway, BFFs | Única com porta publicada (8080, via gateway) |
 | `backend` | gateway, BFFs, serviços, RabbitMQ | Tráfego interno entre serviços |
-| `data` | serviços, bancos | `internal: true`: sem saída externa; gateway e BFFs **não alcançam** os bancos |
+| `data-<serviço>` (4) | um serviço e o seu banco | `internal: true`: sem saída externa; nenhum outro serviço, BFF ou gateway alcança aquele banco |
+
+Todos os bancos exigem senha, e cada um tem a sua. Para comprovar o isolamento com a stack no ar (o script também confere que cada serviço alcança o próprio banco):
+
+```bash
+scripts/verificar_isolamento.sh
+```
 
 `depends_on` com `condition: service_healthy` garante que cada serviço só sobe depois do seu banco.
 
-Credenciais vêm de variáveis de ambiente com valores padrão de desenvolvimento (sobrescritas por um `.env` local, que não é versionado).
+Credenciais vêm de variáveis de ambiente com valores padrão de desenvolvimento (sobrescritas por um `.env` local, não versionado; modelo em [`.env.example`](../.env.example)). O MongoDB e o PostgreSQL só criam o usuário em volume vazio: ao trocar senhas, recrie com `docker compose down -v`.
 
 ## 3. Kubernetes (`k8s/`)
 
@@ -51,16 +57,17 @@ Credenciais vêm de variáveis de ambiente com valores padrão de desenvolviment
 |---------|----------|
 | `00-namespace.yaml` | Namespace `saudeconecta` |
 | `01-configmap.yaml` | URLs entre serviços e host/porta de cada banco |
-| `02-secrets.yaml` | Credenciais dos bancos e do RabbitMQ (valores de desenvolvimento) |
+| `02-secrets.yaml` | Um Secret por serviço e um do RabbitMQ (valores de desenvolvimento) |
 | `03-bancos.yaml` | 4 StatefulSets (um por banco) + Services headless + PVC de 1Gi cada |
 | `04-aplicacoes.yaml` | 6 Deployments (2 réplicas) + Services, com probes e limites de recursos |
 | `05-rabbitmq.yaml` | StatefulSet + PVC + Service |
-| `06-ingress.yaml` | Ingress: `/web/v1` e `/admin/v1` (com remoção do prefixo) e `/api/v1/*` |
+| `06-ingress.yaml` | Ingress: `/web/v1` e `/admin/v1` (com remoção do prefixo), `/api/v1/*` e a rota de preferências de notificação |
+| `07-networkpolicy.yaml` | Cada banco só aceita conexão do seu serviço |
 | `cluster/kind-config.yaml` | Cluster local; Ingress exposto em `localhost:8081` |
 
 - **Deployments** para serviços stateless (escalam livremente); **StatefulSets** para bancos e RabbitMQ (identidade e volume estáveis).
 - **ConfigMap** guarda o que não é sensível; **Secret** guarda credenciais e é injetado via `secretKeyRef`, fora das imagens.
-- **Readiness/liveness probes** em `/health`: o tráfego só chega em pods prontos e pods travados são reiniciados.
+- **Readiness** em `/ready` (verifica o banco): sem banco, o pod sai do balanceamento. **Liveness** em `/live` (só o processo): uma falha do banco não reinicia o serviço.
 - **Ingress** faz o papel do gateway, seguindo [`gateway-routing.md`](gateway-routing.md).
 
 > ⚠️ Os valores em `02-secrets.yaml` são **de desenvolvimento**. Em produção devem vir de um cofre (External Secrets, Sealed Secrets) e nunca ser versionados.

@@ -113,6 +113,7 @@ A ordem importa: **rate limit antes do JWT** protege a validação criptográfic
 | Versão | TLS 1.2 mínimo, 1.3 preferido |
 | Certificado | Let's Encrypt (prod) / autoassinado (local) |
 | Redirecionamento | HTTP 80 → HTTPS 443 (`301`) + HSTS |
+| Ambiente local | **TLS não habilitado**: a demonstração usa HTTP em `localhost` |
 | Tráfego interno | HTTP puro na rede privada do cluster (mTLS fica como evolução, via service mesh) |
 
 *Por quê:* centraliza certificados em um ponto e poupa CPU dos serviços.

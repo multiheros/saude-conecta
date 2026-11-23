@@ -8,7 +8,7 @@ const NOTIFICACOES = process.env.NOTIFICACOES_URL || 'http://notificacoes:8004';
 
 const app = express();
 
-app.get('/health', (_req, res) => res.json({ service: 'bff-admin', status: 'ok', instance: os.hostname() }));
+app.get(['/live', '/ready'], (_req, res) => res.json({ service: 'bff-admin', status: 'ok', instance: os.hostname() }));
 
 // BFF do gestor: dados agregados e analiticos.
 // O gateway remove o prefixo /admin/v1 (strip_path), entao a rota aqui e /painel.

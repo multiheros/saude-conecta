@@ -156,7 +156,11 @@ paths:
     post:
       tags: [Pacientes]
       summary: (SAGA passo 2) Valida paciente e marca "agendamento em andamento"
-      description: Chamado pelo orquestrador. Compensação é `DELETE` neste mesmo recurso.
+      description: |
+        Chamado pelo orquestrador; idempotente para o mesmo `X-Saga-Id`. Compensação é `DELETE` neste
+        mesmo recurso. No sucesso, a flag é limpa ao consumir o evento `AgendamentoCriado`.
+      parameters:
+        - { name: X-Saga-Id, in: header, required: true, description: SAGA dona da flag, schema: { type: string, format: uuid } }
       responses:
         '200':
           description: Paciente válido
@@ -176,8 +180,11 @@ paths:
     delete:
       tags: [Pacientes]
       summary: (SAGA compensação) Reverte flag "agendamento em andamento"
+      description: Só reverte se a flag pertencer à SAGA informada; caso contrário não altera nada.
+      parameters:
+        - { name: X-Saga-Id, in: header, required: true, description: SAGA que está compensando, schema: { type: string, format: uuid } }
       responses:
-        '204': { description: Flag revertida (idempotente) }
+        '204': { description: Flag revertida ou já não pertencia à SAGA (idempotente) }
 components:
   securitySchemes:
     bearerAuth:

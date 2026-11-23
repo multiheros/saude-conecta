@@ -1,0 +1,40 @@
+# Database per Service na rede: cada banco so aceita conexao do seu servico.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: db-pacientes, namespace: saudeconecta }
+spec:
+  podSelector: { matchLabels: { app: db-pacientes } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: pacientes } } }]
+      ports: [{ protocol: TCP, port: 5432 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: db-agendamento, namespace: saudeconecta }
+spec:
+  podSelector: { matchLabels: { app: db-agendamento } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: agendamento } } }]
+      ports: [{ protocol: TCP, port: 5432 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: db-triagem, namespace: saudeconecta }
+spec:
+  podSelector: { matchLabels: { app: db-triagem } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: triagem } } }]
+      ports: [{ protocol: TCP, port: 27017 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: db-notificacoes, namespace: saudeconecta }
+spec:
+  podSelector: { matchLabels: { app: db-notificacoes } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: notificacoes } } }]
+      ports: [{ protocol: TCP, port: 6379 }]

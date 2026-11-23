@@ -27,10 +27,10 @@ spec:
             - name: DB_PORT
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: PACIENTES_DB_PORT } }
           readinessProbe:
-            httpGet: { path: /health, port: 8001 }
+            httpGet: { path: /ready, port: 8001 }
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /health, port: 8001 }
+            httpGet: { path: /live, port: 8001 }
             initialDelaySeconds: 10
             periodSeconds: 15
           resources:
@@ -65,10 +65,10 @@ spec:
             - name: DB_PORT
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: AGENDAMENTO_DB_PORT } }
           readinessProbe:
-            httpGet: { path: /health, port: 8002 }
+            httpGet: { path: /ready, port: 8002 }
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /health, port: 8002 }
+            httpGet: { path: /live, port: 8002 }
             initialDelaySeconds: 10
             periodSeconds: 15
           resources:
@@ -103,10 +103,10 @@ spec:
             - name: DB_PORT
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: TRIAGEM_DB_PORT } }
           readinessProbe:
-            httpGet: { path: /health, port: 8003 }
+            httpGet: { path: /ready, port: 8003 }
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /health, port: 8003 }
+            httpGet: { path: /live, port: 8003 }
             initialDelaySeconds: 10
             periodSeconds: 15
           resources:
@@ -141,10 +141,10 @@ spec:
             - name: DB_PORT
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: NOTIFICACOES_DB_PORT } }
           readinessProbe:
-            httpGet: { path: /health, port: 8004 }
+            httpGet: { path: /ready, port: 8004 }
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /health, port: 8004 }
+            httpGet: { path: /live, port: 8004 }
             initialDelaySeconds: 10
             periodSeconds: 15
           resources:
@@ -175,10 +175,10 @@ spec:
           envFrom: [{ configMapRef: { name: saudeconecta-config } }]
 
           readinessProbe:
-            httpGet: { path: /health, port: 3001 }
+            httpGet: { path: /ready, port: 3001 }
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /health, port: 3001 }
+            httpGet: { path: /live, port: 3001 }
             initialDelaySeconds: 10
             periodSeconds: 15
           resources:
@@ -209,10 +209,10 @@ spec:
           envFrom: [{ configMapRef: { name: saudeconecta-config } }]
 
           readinessProbe:
-            httpGet: { path: /health, port: 3002 }
+            httpGet: { path: /ready, port: 3002 }
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /health, port: 3002 }
+            httpGet: { path: /live, port: 3002 }
             initialDelaySeconds: 10
             periodSeconds: 15
           resources:
