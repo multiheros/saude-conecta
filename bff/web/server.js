@@ -7,7 +7,7 @@ const AGENDAMENTO = process.env.AGENDAMENTO_URL || 'http://agendamento:8002';
 
 const app = express();
 
-app.get('/health', (_req, res) => res.json({ service: 'bff-web', status: 'ok', instance: os.hostname() }));
+app.get(['/live', '/ready'], (_req, res) => res.json({ service: 'bff-web', status: 'ok', instance: os.hostname() }));
 
 // BFF do paciente: dados simples, pessoais e acionaveis.
 // O gateway remove o prefixo /web/v1 (strip_path), entao a rota aqui e /home.

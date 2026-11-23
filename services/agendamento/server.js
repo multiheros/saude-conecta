@@ -19,7 +19,11 @@ function checkDb() {
   });
 }
 
-app.get('/health', async (_req, res) => {
+// Vivo: o processo responde. Nao depende do banco, para nao ser reiniciado por falha alheia.
+app.get('/live', (_req, res) => res.json({ service: NAME, status: 'ok', instance: os.hostname() }));
+
+// Pronto: pode receber trafego (banco acessivel).
+app.get('/ready', async (_req, res) => {
   const db = await checkDb();
   res.status(db === 'down' ? 503 : 200).json({
     service: NAME, status: db === 'down' ? 'degraded' : 'ok', db, instance: os.hostname(),
