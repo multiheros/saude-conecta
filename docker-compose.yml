@@ -38,28 +38,28 @@ services:
     build: ./services/pacientes
     <<: *svc-defaults
     environment: { DB_HOST: db-pacientes, DB_PORT: "5432" }
-    networks: [backend, data]
+    networks: [backend, data-pacientes]
     depends_on: { db-pacientes: { condition: service_healthy } }
 
   agendamento:
     build: ./services/agendamento
     <<: *svc-defaults
     environment: { DB_HOST: db-agendamento, DB_PORT: "5432" }
-    networks: [backend, data]
+    networks: [backend, data-agendamento]
     depends_on: { db-agendamento: { condition: service_healthy } }
 
   triagem:
     build: ./services/triagem
     <<: *svc-defaults
     environment: { DB_HOST: db-triagem, DB_PORT: "27017" }
-    networks: [backend, data]
+    networks: [backend, data-triagem]
     depends_on: { db-triagem: { condition: service_healthy } }
 
   notificacoes:
     build: ./services/notificacoes
     <<: *svc-defaults
     environment: { DB_HOST: db-notificacoes, DB_PORT: "6379" }
-    networks: [backend, data]
+    networks: [backend, data-notificacoes]
     depends_on: { db-notificacoes: { condition: service_healthy } }
 
   # ---------- Bancos: instancias separadas, volume proprio ----------
@@ -70,7 +70,7 @@ services:
       POSTGRES_USER: ${PACIENTES_DB_USER:-pacientes}
       POSTGRES_PASSWORD: ${PACIENTES_DB_PASSWORD:-troque-me-pacientes}
     volumes: [pacientes-data:/var/lib/postgresql/data]
-    networks: [data]
+    networks: [data-pacientes]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d pacientes"]
       interval: 5s
@@ -84,7 +84,7 @@ services:
       POSTGRES_USER: ${AGENDAMENTO_DB_USER:-agendamento}
       POSTGRES_PASSWORD: ${AGENDAMENTO_DB_PASSWORD:-troque-me-agendamento}
     volumes: [agendamento-data:/var/lib/postgresql/data]
-    networks: [data]
+    networks: [data-agendamento]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d agendamento"]
       interval: 5s
@@ -93,8 +93,11 @@ services:
 
   db-triagem:
     image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${TRIAGEM_DB_USER:-triagem}
+      MONGO_INITDB_ROOT_PASSWORD: ${TRIAGEM_DB_PASSWORD:-troque-me-triagem}
     volumes: [triagem-data:/data/db]
-    networks: [data]
+    networks: [data-triagem]
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 5s
@@ -103,11 +106,14 @@ services:
 
   db-notificacoes:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    environment:
+      # Lida tambem pelo redis-cli (healthcheck)
+      REDISCLI_AUTH: ${NOTIFICACOES_DB_PASSWORD:-troque-me-notificacoes}
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDISCLI_AUTH\""]
     volumes: [notificacoes-data:/data]
-    networks: [data]
+    networks: [data-notificacoes]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -126,15 +132,21 @@ services:
       timeout: 5s
       retries: 10
 
-# Tres camadas de rede:
-#  - frontend: gateway <-> BFFs (unica com porta publicada, via gateway)
-#  - backend : gateway/BFFs <-> servicos de dominio <-> RabbitMQ
-#  - data    : servicos <-> bancos. `internal: true` => sem saida para fora e
-#              inalcancavel pelo gateway e pelos BFFs.
+# Redes:
+#  - frontend : gateway <-> BFFs (unica com porta publicada, via gateway)
+#  - backend  : gateway/BFFs <-> servicos de dominio <-> RabbitMQ
+#  - data-<x> : servico <x> <-> banco de <x>, uma rede por par. `internal: true`
+#               => sem saida para fora e inalcancavel pelos demais servicos.
 networks:
   frontend:
   backend:
-  data:
+  data-pacientes:
+    internal: true
+  data-agendamento:
+    internal: true
+  data-triagem:
+    internal: true
+  data-notificacoes:
     internal: true
 
 volumes:
