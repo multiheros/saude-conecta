@@ -24,9 +24,9 @@ spec:
           env:
             - { name: POSTGRES_DB, value: pacientes }
             - name: POSTGRES_USER
-              valueFrom: { secretKeyRef: { name: saudeconecta-secrets, key: PACIENTES_DB_USER } }
+              valueFrom: { secretKeyRef: { name: pacientes-db, key: DB_USER } }
             - name: POSTGRES_PASSWORD
-              valueFrom: { secretKeyRef: { name: saudeconecta-secrets, key: PACIENTES_DB_PASSWORD } }
+              valueFrom: { secretKeyRef: { name: pacientes-db, key: DB_PASSWORD } }
           volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
           readinessProbe:
             tcpSocket: { port: 5432 }
@@ -63,9 +63,9 @@ spec:
           env:
             - { name: POSTGRES_DB, value: agendamento }
             - name: POSTGRES_USER
-              valueFrom: { secretKeyRef: { name: saudeconecta-secrets, key: AGENDAMENTO_DB_USER } }
+              valueFrom: { secretKeyRef: { name: agendamento-db, key: DB_USER } }
             - name: POSTGRES_PASSWORD
-              valueFrom: { secretKeyRef: { name: saudeconecta-secrets, key: AGENDAMENTO_DB_PASSWORD } }
+              valueFrom: { secretKeyRef: { name: agendamento-db, key: DB_PASSWORD } }
           volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
           readinessProbe:
             tcpSocket: { port: 5432 }
@@ -99,7 +99,11 @@ spec:
         - name: db-triagem
           image: mongo:7
           ports: [{ containerPort: 27017 }]
-
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom: { secretKeyRef: { name: triagem-db, key: DB_USER } }
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom: { secretKeyRef: { name: triagem-db, key: DB_PASSWORD } }
           volumeMounts: [{ name: data, mountPath: /data/db }]
           readinessProbe:
             tcpSocket: { port: 27017 }
@@ -133,7 +137,10 @@ spec:
         - name: db-notificacoes
           image: redis:7-alpine
           ports: [{ containerPort: 6379 }]
-
+          command: ["sh", "-c", 'exec redis-server --appendonly yes --requirepass "$DB_PASSWORD"']
+          env:
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: notificacoes-db, key: DB_PASSWORD } }
           volumeMounts: [{ name: data, mountPath: /data }]
           readinessProbe:
             tcpSocket: { port: 6379 }

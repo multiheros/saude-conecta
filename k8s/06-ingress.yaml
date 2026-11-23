@@ -39,3 +39,21 @@ spec:
           - { path: /api/v1/relatorios, pathType: Prefix, backend: { service: { name: agendamento, port: { number: 8002 } } } }
           - { path: /api/v1/triagens, pathType: Prefix, backend: { service: { name: triagem, port: { number: 8003 } } } }
           - { path: /api/v1/notificacoes, pathType: Prefix, backend: { service: { name: notificacoes, port: { number: 8004 } } } }
+---
+# Ingress 3: preferencias pertencem ao servico de Notificacoes, embora o caminho
+# comece com /pacientes. O caminho mais longo (regex) vence o prefixo /api/v1/pacientes.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: saudeconecta-preferencias
+  namespace: saudeconecta
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /api/v1/pacientes/[^/]+/preferencias-notificacao$
+            pathType: ImplementationSpecific
+            backend: { service: { name: notificacoes, port: { number: 8004 } } }
