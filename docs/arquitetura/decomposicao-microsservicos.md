@@ -102,7 +102,7 @@ flowchart TB
     AGE --- ORQ
     ORQ -- "REST 1: classificar" --> TRI
     ORQ -- "REST 2: validar" --> PAC
-    ORQ -- "REST 3: reservar" --> AGE
+    ORQ -- "3: reservar (transação local)" --> AGE
     ORQ -- "REST 4: notificar" --> NOT
 
     TRI -- "REST/gRPC" --> LLM
@@ -113,7 +113,9 @@ flowchart TB
     AGE -- "Poller publica" --> MQ
     MQ -- "SlotReservado, AgendamentoCancelado..." --> AGE
     MQ -- "eventos" --> NOT
-    MQ -- "AgendamentoConfirmado" --> PAC
+    MQ -- "AgendamentoCriado, AtendimentoRealizado..." --> PAC
+    MQ -- "AgendamentoCriado" --> TRI
+    PAC -- "Poller publica" --> MQ
     AGE --> RM
 ```
 
@@ -123,7 +125,8 @@ flowchart TB
 |-----------|-----------|------------------|-----------------------|
 | Gateway → BFFs | Entrada de requisições | Resposta imediata ao usuário | 10 s |
 | BFF → Pacientes/Agendamento/Triagem/Notificações | Composição de telas | O usuário espera o dado | 2–3 s, retry (GET), *circuit breaker* |
-| Orquestrador → serviços (SAGA) | Comandos com resposta de sucesso/falha | O próximo passo depende do resultado | 3 s (Triagem: 10 s), retry idempotente |
+| Orquestrador → serviços (SAGA) | Comandos com resposta de sucesso/falha | O próximo passo depende do resultado | 3 s com 2 retries idempotentes; Triagem: 10 s, **sem** retry (ela já trata o LLM internamente em até 8 s) |
+| Triagem → Agendamento (`GET /slots`) | Tool do LLM: horários reais na recomendação | O paciente espera a recomendação | 2 s; sem horários se falhar. **Fora da SAGA**, para não criar ciclo |
 
 **Regra:** REST para *perguntas* e *comandos que precisam de resposta imediata*.
 
@@ -131,12 +134,17 @@ flowchart TB
 
 | Evento (v1) | Produtor | Consumidores | Efeito |
 |-------------|----------|--------------|--------|
-| `AgendamentoCriado` | Agendamento | Notificações | Agenda confirmação/lembretes |
-| `SlotReservado` | Agendamento | Agendamento (projetor) | Atualiza **Read Model** (CQRS) |
-| `AgendamentoCancelado` | Agendamento | Notificações, projetor | Cancela lembretes, libera slot na leitura |
-| `AgendamentoConfirmado` | Agendamento | Pacientes | Atualiza histórico |
-| `AtendimentoRealizado` / `FaltaRegistrada` | Agendamento | Pacientes, projetor | Histórico e métricas de absenteísmo |
+| `AgendamentoSolicitado` | Agendamento | Agendamento (projetor) | Cria a visão em `PENDENTE` |
+| `SlotReservado` / `SlotLiberado` | Agendamento | Agendamento (projetor) | Atualiza slots livres e ocupação (CQRS) |
+| `AgendamentoCriado` | Agendamento (SAGA concluída) | projetor, Pacientes, Triagem | Visão em `AGENDADO`; limpa a flag "em andamento"; triagem deixa de ser temporária |
+| `AgendamentoConfirmado` | Agendamento | projetor | Visão em `CONFIRMADO` |
+| `AgendamentoReagendado` | Agendamento | projetor, Notificações | Troca o horário; refaz os lembretes |
+| `AgendamentoCancelado` | Agendamento | projetor, Notificações | Visão em `CANCELADO`; cancela lembretes |
+| `AtendimentoRealizado` / `FaltaRegistrada` | Agendamento | projetor, Pacientes | Histórico e métricas de absenteísmo |
+| `EscalaCriada` | Agendamento | projetor | Carrega os novos slots livres |
 | `PacienteAtualizado` | Pacientes | Agendamento | Atualiza cópia local de dados de exibição |
+
+> Os lembretes são **criados só pelo passo 4 da SAGA**. Eventos apenas os cancelam ou refazem, o que evita notificação duplicada.
 
 | Característica | Decisão |
 |----------------|---------|
@@ -161,7 +169,7 @@ flowchart TB
 ## 3. Acoplamento e autonomia
 
 - **Nenhum serviço lê o banco do outro** (Database per Service): cada banco é uma **instância própria** (container/StatefulSet separado, com volume e credenciais exclusivas). Mesmo onde a tecnologia se repete (PostgreSQL em Pacientes e Agendamento; MongoDB em Triagem e no Read Model de Agendamento), não há servidor compartilhado: a falha ou a migração de um banco não atinge outro serviço.
-- Se **Notificações** cair, agendar continua funcionando: o evento fica na fila (o passo 4 da SAGA é a única dependência síncrona, tratada pela compensação ou *retry*).
+- Se **Notificações** cair, os eventos que ela consome esperam na fila. O passo 4 da SAGA, porém, é síncrono: novos agendamentos são **compensados** até o serviço voltar (decisão e trade-off em [`saga-agendamento.md`](saga-agendamento.md)).
 - Dados replicados (ex.: nome do paciente para exibição) são **cópias eventualmente consistentes**, nunca fonte de verdade.
 - O Orquestrador mora no serviço de **Agendamento** (dono do processo de negócio), evitando um 5º serviço.
 

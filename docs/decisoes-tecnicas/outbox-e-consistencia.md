@@ -9,8 +9,8 @@ Com *Database per Service* não existe transação distribuída ACID. Cada front
 | # | Origem (verdade) | Destino (cópia/derivado) | Mecanismo | SLA de propagação (p95) | Impacto se atrasar |
 |---|------------------|--------------------------|-----------|-------------------------|--------------------|
 | 1 | Agendamento (write) | **Read Model** de Agendamento | Evento `SlotReservado` via Outbox | **≤ 5 s** | Paciente vê slot ainda livre; reserva falha com `409` (seguro) |
-| 2 | Agendamento | Notificações (lembretes) | `AgendamentoCriado` | ≤ 30 s | Confirmação chega com pequeno atraso |
-| 3 | Agendamento | Notificações (cancelamento) | `AgendamentoCancelado` | ≤ 10 s | Risco de lembrete indevido (mitigado: checa estado antes de enviar) |
+| 2 | Agendamento | Pacientes (flag) e Triagem (temporária) | `AgendamentoCriado` | ≤ 10 s | Novo pedido do mesmo paciente recebe `409` por instantes (seguro) |
+| 3 | Agendamento | Notificações (lembretes) | `AgendamentoCancelado`, `AgendamentoReagendado` | ≤ 10 s | Risco de lembrete indevido (mitigado: checa estado antes de enviar) |
 | 4 | Agendamento | Pacientes (histórico) | `AtendimentoRealizado` | ≤ 60 s | Histórico desatualizado por instantes |
 | 5 | Pacientes | Agendamento (dados de exibição) | `PacienteAtualizado` | ≤ 60 s | Nome antigo na tela |
 | 6 | Agendamento + Pacientes + Notificações | Dashboard `bff-admin` | Leitura agregada + cache | ≤ 5 min | Indicadores com leve defasagem |
@@ -149,7 +149,7 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant MQ as RabbitMQ
     loop a cada 500 ms (ou LISTEN/NOTIFY)
-      W->>DB: BEGIN; SELECT * FROM outbox_events<br/>WHERE status='PENDING' AND next_attempt_at<=now()<br/>ORDER BY created_at LIMIT 100<br/>FOR UPDATE SKIP LOCKED
+      W->>DB: BEGIN, SELECT * FROM outbox_events<br/>WHERE status='PENDING' AND next_attempt_at<=now()<br/>ORDER BY created_at LIMIT 100<br/>FOR UPDATE SKIP LOCKED
       DB-->>W: lote de eventos
       loop cada evento
         W->>MQ: publish (persistent, mandatory) + aguarda publisher confirm

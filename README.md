@@ -224,7 +224,7 @@ Demonstração do sistema sendo levantado com Docker Compose e Kubernetes (Docke
 
 **[▶️ Assistir no YouTube](https://youtu.be/KnB0XyP8xoM)**
 
-> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/health` + alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A lógica de domínio (SAGA, CQRS, RAG) entra na Parte 4.
+> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A lógica de domínio (SAGA, CQRS, RAG) entra na Parte 4.
 
 **Requisitos:** Docker 24+ com Compose v2. Para Kubernetes: `kubectl` e [`kind`](https://kind.sigs.k8s.io).
 

@@ -14,6 +14,7 @@ tags:
   - name: Agendamentos
   - name: Slots
   - name: Escalas
+  - name: SAGA
 paths:
   /slots:
     get:
@@ -32,45 +33,15 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Slot' }
-  /slots/{id}/reserva:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
-    post:
-      tags: [Slots]
-      summary: (SAGA passo 3) Reserva slot
-      description: Idempotente via header `Idempotency-Key`.
-      parameters:
-        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [pacienteId, sagaId]
-              properties:
-                pacienteId: { type: string, format: uuid }
-                sagaId: { type: string, format: uuid }
-      responses:
-        '201':
-          description: Slot reservado (publica `SlotReservado` via Outbox)
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Agendamento' }
-        '409':
-          description: Slot indisponível
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-    delete:
-      tags: [Slots]
-      summary: (SAGA compensação) Libera slot reservado
-      responses:
-        '204': { description: Slot liberado (idempotente) }
   /agendamentos:
     post:
       tags: [Agendamentos]
       summary: Solicita agendamento (inicia a SAGA)
+      description: |
+        O id já existe na resposta `202`. A reserva do slot (passo 3) é transação local do orquestrador,
+        sem endpoint próprio.
+      parameters:
+        - { name: Idempotency-Key, in: header, description: Evita SAGA duplicada em reenvio, schema: { type: string } }
       requestBody:
         required: true
         content:
@@ -208,6 +179,42 @@ paths:
             application/hal+json:
               schema: { $ref: '#/components/schemas/AgendamentoHateoas' }
         '409': { description: Transição de estado inválida }
+  /agendamentos/{id}/comparecimento:
+    parameters:
+      - { $ref: '#/components/parameters/AgendamentoId' }
+    post:
+      tags: [Agendamentos]
+      summary: Registra atendimento realizado ou falta (perfil gestor)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [compareceu]
+              properties:
+                compareceu: { type: boolean }
+      responses:
+        '200':
+          description: Status passa a REALIZADO ou FALTOU
+          content:
+            application/hal+json:
+              schema: { $ref: '#/components/schemas/AgendamentoHateoas' }
+        '403': { description: Apenas perfil gestor }
+        '409': { description: Transição de estado inválida }
+  /sagas/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [SAGA]
+      summary: Auditoria da SAGA (passos, compensações e horários)
+      responses:
+        '200':
+          description: Estado da SAGA
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Saga' }
+        '404': { description: Não encontrada }
   /relatorios/ocupacao:
     get:
       tags: [Agendamentos]
@@ -295,6 +302,7 @@ components:
         pacienteId: { type: string, format: uuid }
         slotId: { type: string, format: uuid }
         sintomas: { type: string, description: Texto livre enviado à triagem }
+        idade: { type: integer, description: Informada pelo BFF a partir do perfil; melhora a triagem }
     Agendamento:
       type: object
       properties:
@@ -305,6 +313,9 @@ components:
         dataHora: { type: string, format: date-time }
         especialidade: { type: string }
         classificacaoUrgencia: { type: string, enum: [VERMELHO, LARANJA, AMARELO, VERDE, AZUL] }
+        sagaId: { type: string, format: uuid }
+        motivo: { type: string, description: Preenchido quando CANCELADO }
+        atualizadoEm: { type: string, format: date-time, description: Instante da projeção (CQRS) }
     Link:
       type: object
       required: [href]
@@ -324,6 +335,23 @@ components:
                 confirmar: { $ref: '#/components/schemas/Link' }
                 reagendar: { $ref: '#/components/schemas/Link' }
                 cancelar: { $ref: '#/components/schemas/Link' }
+    Saga:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        agendamentoId: { type: string, format: uuid }
+        estado: { type: string, enum: [EM_ANDAMENTO, CONCLUIDA, COMPENSANDO, COMPENSACAO_PENDENTE, FALHOU] }
+        motivo: { type: string }
+        historico:
+          type: array
+          items:
+            type: object
+            properties:
+              passo: { type: string, example: 4-notificacoes }
+              tipo: { type: string, enum: [ACAO, COMPENSACAO] }
+              resultado: { type: string, enum: [OK, FALHA, PENDENTE] }
+              detalhe: { type: string }
+              em: { type: string, format: date-time }
     EscalaCreate:
       type: object
       required: [profissionalId, ubsId, diaSemana, horaInicio, horaFim, duracaoSlotMin]

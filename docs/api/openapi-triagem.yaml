@@ -16,8 +16,12 @@ paths:
       tags: [Triagens]
       summary: (SAGA passo 1) Classifica urgência a partir dos sintomas
       description: |
-        Latência alvo p95 <= 8 s (chamada ao LLM). Resultado é **temporário** até a SAGA concluir.
+        Latência alvo p95 <= 8 s. Resultado é **temporário** até o evento `AgendamentoCriado`.
+        Com o LLM indisponível responde `201` por regras (`origem: REGRAS`), sem falhar a SAGA.
         O modelo apenas **sugere**; a decisão clínica final é do profissional.
+      parameters:
+        - { name: X-Saga-Id, in: header, required: true, description: SAGA que criou a triagem, schema: { type: string, format: uuid } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
       requestBody:
         required: true
         content:
@@ -34,11 +38,55 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
-        '503':
-          description: LLM indisponível (acionar fallback manual)
+    delete:
+      tags: [Triagens]
+      summary: (SAGA compensação) Descarta as classificações temporárias da SAGA
+      parameters:
+        - { name: sagaId, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Descartadas (idempotente) }
+        '400': { description: sagaId ausente }
+  /triagens/recomendacoes:
+    post:
+      tags: [Triagens]
+      summary: Classifica e recomenda horários reais (antes da SAGA)
+      description: |
+        Usa a mesma classificação e, em seguida, a tool `consultar_horarios`, que lê `GET /slots` do
+        serviço de Agendamento. Não grava triagem. VERMELHO não traz horários: orienta atendimento imediato.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sintomas, ubsId]
+              properties:
+                sintomas: { type: string }
+                idade: { type: integer }
+                ubsId: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Recomendação
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+            application/json:
+              schema: { $ref: '#/components/schemas/Recomendacao' }
+        '422': { description: Sintomas insuficientes }
+  /triagens/saude-llm:
+    get:
+      tags: [Triagens]
+      summary: Estado do circuit breaker, cache e fallback
+      responses:
+        '200':
+          description: Indicadores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  circuito: { type: string, enum: [FECHADO, ABERTO, MEIO_ABERTO] }
+                  chamadas: { type: integer }
+                  acertosCache: { type: integer }
+                  fallbacks: { type: integer }
   /triagens/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -52,11 +100,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Triagem' }
         '404': { description: Não encontrada }
-    delete:
-      tags: [Triagens]
-      summary: (SAGA compensação) Descarta classificação temporária
-      responses:
-        '204': { description: Descartada (idempotente) }
   /triagens/{id}/orientacoes:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -121,7 +164,37 @@ components:
         especialidadeSugerida: { type: string }
         confianca: { type: number, format: float, minimum: 0, maximum: 1 }
         temporaria: { type: boolean }
+        origem: { type: string, enum: [LLM, CACHE, REGRAS], description: Como a classificação foi obtida }
+        fontes:
+          type: array
+          items: { $ref: '#/components/schemas/Fonte' }
         criadoEm: { type: string, format: date-time }
+    Fonte:
+      type: object
+      properties:
+        documento: { type: string, example: 'Caderno de Atenção Básica nº 28, vol. II' }
+        secao: { type: string }
+        pagina: { type: integer }
+    Recomendacao:
+      type: object
+      properties:
+        classificacao: { $ref: '#/components/schemas/Urgencia' }
+        justificativa: { type: string }
+        especialidadeSugerida: { type: string }
+        prazoMaximoHoras: { type: integer }
+        origem: { type: string, enum: [LLM, CACHE, REGRAS] }
+        fontes:
+          type: array
+          items: { $ref: '#/components/schemas/Fonte' }
+        horarios:
+          type: array
+          items:
+            type: object
+            properties:
+              slotId: { type: string, format: uuid }
+              inicio: { type: string, format: date-time }
+              especialidade: { type: string }
+        orientacao: { type: string }
     Problem:
       type: object
       description: RFC 7807 (Problem Details)
