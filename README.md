@@ -224,7 +224,7 @@ Demonstração do sistema sendo levantado com Docker Compose e Kubernetes (Docke
 
 **[▶️ Assistir no YouTube](https://youtu.be/KnB0XyP8xoM)**
 
-> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A Parte 4, em andamento, substitui esses dados pela lógica real, e já cobre os 4 serviços com banco próprio, eventos, JWT, a **SAGA** completa, o **CQRS** do Agendamento a Triagem com **RAG** e **LLM**, e o gateway **Kong** com JWT.
+> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A Parte 4, em andamento, substitui esses dados pela lógica real, e já cobre os 4 serviços com banco próprio, eventos, JWT, a **SAGA** completa, o **CQRS** do Agendamento a Triagem com **RAG** e **LLM**, o gateway **Kong** com JWT e os **dois clientes** web.
 
 **Requisitos:** Docker 24+ com Compose v2. Para Kubernetes: `kubectl` e [`kind`](https://kind.sigs.k8s.io).
 
@@ -236,7 +236,18 @@ docker compose up -d --build
 
 Para usar o LLM na triagem, copie `.env.example` para `.env` e preencha `GEMINI_API_KEY` antes de subir. Sem a chave, a triagem funciona por regras.
 
-Entrada única pelo gateway: `http://localhost:8080`
+Entrada única pelo gateway:
+
+| Cliente | Endereço | Acesso fictício |
+|---------|----------|-----------------|
+| App do paciente | http://localhost:8080 | CPF `10000000108`, senha `demo12345` |
+| Painel do gestor | http://localhost:8080/painel | CPF `90000000175`, senha `demo12345` |
+
+```bash
+scripts/demo/dados.sh   # opcional: enche a agenda com dados fictícios, pela API real
+```
+
+Pela linha de comando:
 
 ```bash
 # Paciente fictício 10000000108; gestora 90000000175 (troque o CPF e a rota)
@@ -262,8 +273,9 @@ for s in pacientes agendamento notificacoes; do docker build -t saudeconecta/$s:
 docker build -t saudeconecta/triagem:1.0 services/triagem
 for b in web admin; do docker build -t saudeconecta/bff-$b:1.0 -f bff/$b/Dockerfile .; done
 docker build -t saudeconecta/gateway:1.0 gateway
+for a in paciente gestor; do docker build -t saudeconecta/web-$a:1.0 --build-arg APP=$a clientes; done
 docker build -t saudeconecta/rabbitmq:1.0 infra/rabbitmq
-for i in pacientes agendamento triagem notificacoes bff-web bff-admin gateway rabbitmq; do kind load docker-image saudeconecta/$i:1.0 --name saudeconecta; done
+for i in pacientes agendamento triagem notificacoes bff-web bff-admin gateway web-paciente web-gestor rabbitmq; do kind load docker-image saudeconecta/$i:1.0 --name saudeconecta; done
 
 # 3. Ingress controller
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml
@@ -319,6 +331,7 @@ Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, 
 | [`docs/api/`](docs/api/) | Contratos OpenAPI dos 4 serviços *(Parte 2)* |
 | [`docs/decisoes-tecnicas/api-guidelines.md`](docs/decisoes-tecnicas/api-guidelines.md) | Versionamento por URI e HATEOAS *(Parte 2)* |
 | [`docs/decisoes-tecnicas/outbox-e-consistencia.md`](docs/decisoes-tecnicas/outbox-e-consistencia.md) | Consistência eventual, Dual Write e Transactional Outbox *(Parte 2)* |
+| [`docs/clientes.md`](docs/clientes.md) | App do paciente e painel do gestor |
 | [`docs/arquitetura/rag-triagem.md`](docs/arquitetura/rag-triagem.md) | RAG da Triagem: base, embeddings, ChromaDB e recuperação |
 | [`docs/arquitetura/llm-triagem.md`](docs/arquitetura/llm-triagem.md) | LLM da Triagem: chains, tool, resiliência e privacidade |
 | `docs/rag-avaliacao.md` | Avaliação do pipeline RAG *(Parte 4)* |
