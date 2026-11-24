@@ -89,12 +89,13 @@ A resposta inclui `atendidoPor` (nome do pod), então a distribuição das requi
 
 | Comando | O que prova |
 |---------|-------------|
-| `scripts/testar.sh` | Testes de integração de Agendamento, Pacientes e Notificações contra PostgreSQL, Redis e RabbitMQ descartáveis: concorrência, compensação, eventos repetidos ou fora de ordem, permissões, DLQ e Outbox |
+| `scripts/testar.sh` | Testes de integração dos 4 serviços contra PostgreSQL, MongoDB, Redis e RabbitMQ descartáveis: SAGA com falha em cada passo, concorrência, compensação, eventos repetidos ou fora de ordem, permissões, DLQ e Outbox |
+| `scripts/verificar_saga.sh` | SAGA na stack real: caminho feliz, compensação em cascata, participante morto, disputa de horário e `kill -9` no orquestrador (~70 s) |
 | `scripts/verificar_outbox.sh` | Nenhum evento se perde com RabbitMQ parado, `kill -9` ou reinício do broker |
 | `scripts/verificar_isolamento.sh` | Isolamento de rede e senha dos bancos (com a stack no ar) |
 
 ## 5. Limitações desta etapa
-- **Agendamento**, **Pacientes** e **Notificações** já usam o próprio banco e RabbitMQ. As consultas do Agendamento ainda leem o banco de escrita (o Read Model vem na etapa de CQRS). A **Triagem** segue com dados fixos.
+- Os 4 serviços já usam o próprio banco e RabbitMQ, e a SAGA está completa. As consultas do Agendamento ainda leem o banco de escrita (o Read Model vem na etapa de CQRS). A **Triagem** classifica por regras; LLM e RAG vêm em seguida.
 - O gateway ainda não valida o JWT, e os BFFs usam uma identidade fixa de demonstração.
 - O ChromaDB (base vetorial da Triagem) ainda não está na stack; entra junto com o RAG.
 - O gateway do Compose é NGINX; no Kubernetes o papel é do Ingress. Autenticação JWT e rate limiting do Kong estão documentados em [`gateway-routing.md`](gateway-routing.md) e ficam para a Parte 4.

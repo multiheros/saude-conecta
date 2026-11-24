@@ -57,6 +57,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Agendamento' }
+        '403': { description: Só o próprio paciente (ou gestor) }
         '422':
           description: Dados inválidos
           content:
@@ -310,7 +311,7 @@ components:
       properties:
         pacienteId: { type: string, format: uuid }
         slotId: { type: string, format: uuid }
-        sintomas: { type: string, description: Texto livre enviado à triagem }
+        sintomas: { type: string, minLength: 10, maxLength: 2000, description: Texto livre enviado à triagem e apagado daqui em seguida }
         idade: { type: integer, description: Informada pelo BFF a partir do perfil; melhora a triagem }
     Agendamento:
       type: object
@@ -351,15 +352,18 @@ components:
         agendamentoId: { type: string, format: uuid }
         estado: { type: string, enum: [EM_ANDAMENTO, CONCLUIDA, COMPENSANDO, COMPENSACAO_PENDENTE, FALHOU] }
         motivo: { type: string }
+        criadoEm: { type: string, format: date-time }
+        atualizadoEm: { type: string, format: date-time }
         historico:
           type: array
           items:
             type: object
             properties:
-              passo: { type: string, example: 4-notificacoes }
+              passo: { type: string, enum: [1-triagem, 2-pacientes, 3-reserva, 4-notificacoes] }
               tipo: { type: string, enum: [ACAO, COMPENSACAO] }
               resultado: { type: string, enum: [OK, FALHA, PENDENTE] }
               detalhe: { type: string }
+              duracaoMs: { type: integer }
               em: { type: string, format: date-time }
     EscalaCreate:
       type: object

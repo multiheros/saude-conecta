@@ -33,7 +33,7 @@ Os clientes **só** enxergam o Gateway. Serviços de domínio e BFFs ficam em re
 | `/web/v1/*` | `bff-web:3001` | 3001 | ✅ JWT (perfil `paciente`) | Web |
 | `/admin/v1/*` | `bff-admin:3002` | 3002 | ✅ JWT (perfil `gestor`) | Admin |
 | `/api/v1/pacientes/*` | `pacientes:8001` | 8001 | ✅ JWT | Interno/BFF |
-| `/api/v1/agendamentos/*`, `/slots/*`, `/escalas/*`, `/relatorios/*` | `agendamento:8002` | 8002 | ✅ JWT | Interno/BFF |
+| `/api/v1/agendamentos/*`, `/sagas/*`, `/slots/*`, `/escalas/*`, `/relatorios/*` | `agendamento:8002` | 8002 | ✅ JWT | Interno/BFF |
 | `/api/v1/triagens/*` | `triagem:8003` | 8003 | ✅ JWT | Interno/BFF |
 | `/api/v1/notificacoes/*` | `notificacoes:8004` | 8004 | ✅ JWT | Interno/BFF |
 | `/api/v1/pacientes/{id}/preferencias-notificacao` | `notificacoes:8004` | 8004 | ✅ JWT | Interno/BFF |
