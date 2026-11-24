@@ -56,6 +56,17 @@ services:
     networks: [frontend, backend]
     depends_on: [pacientes, agendamento, notificacoes]
 
+  # ---------- Telas (arquivos estaticos, so pelo gateway) ----------
+  web-paciente:
+    build: { context: ./clientes, args: { APP: paciente } }
+    <<: *svc-defaults
+    networks: [frontend]
+
+  web-gestor:
+    build: { context: ./clientes, args: { APP: gestor } }
+    <<: *svc-defaults
+    networks: [frontend]
+
   # ---------- Servicos de dominio (cada um com seu banco) ----------
   pacientes:
     build: { context: ., dockerfile: services/pacientes/Dockerfile }
