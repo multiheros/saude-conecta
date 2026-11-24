@@ -80,7 +80,7 @@ stateDiagram-v2
 
 | Status | `_links` presentes |
 |--------|--------------------|
-| `PENDENTE` | `self`, `cancelar` |
+| `PENDENTE` | `self` (SAGA em andamento) |
 | `AGENDADO` | `self`, `confirmar`, `reagendar`, `cancelar` |
 | `CONFIRMADO` | `self`, `reagendar`, `cancelar` |
 | `CANCELADO` · `REALIZADO` · `FALTOU` | `self` |

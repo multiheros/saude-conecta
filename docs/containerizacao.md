@@ -10,6 +10,7 @@ Como o sistema roda em containers (Docker Compose) e no cluster (Kubernetes), e 
 | `triagem` | `python:3.12-slim` | 8003 | 2 |
 | `bff-web`, `bff-admin` | `node:22-alpine` | 3001 / 3002 | 2 |
 | `gateway` (Compose) | `nginx:1.27-alpine` | 80 | 1 |
+| `rabbitmq` | `rabbitmq:3.13-management-alpine` | 5672 | 1 (filas, DLQs e bindings declarados em `infra/rabbitmq`) |
 
 **Multi-stage — ganho:**
 - *Node:* o estágio `deps` roda `npm ci --omit=dev`; a imagem final recebe só `node_modules` de produção e o código, sem cache do npm. Alterar só o código reaproveita a camada de dependências (build mais rápido).
@@ -38,7 +39,8 @@ Cada serviço tem `.dockerignore` para não enviar `node_modules` nem arquivos d
 | Rede | Quem participa | Observação |
 |------|----------------|------------|
 | `frontend` | gateway, BFFs | Única com porta publicada (8080, via gateway) |
-| `backend` | gateway, BFFs, serviços, RabbitMQ | Tráfego interno entre serviços |
+| `backend` | gateway, BFFs, serviços | Tráfego interno entre serviços |
+| `mensageria` | serviços que publicam ou consomem eventos, RabbitMQ | `internal: true` |
 | `data-<serviço>` (4) | um serviço e o seu banco | `internal: true`: sem saída externa; nenhum outro serviço, BFF ou gateway alcança aquele banco |
 
 Todos os bancos exigem senha, e cada um tem a sua. Para comprovar o isolamento com a stack no ar (o script também confere que cada serviço alcança o próprio banco):
@@ -82,7 +84,15 @@ for i in $(seq 1 12); do curl -s localhost:8081/web/v1/home | grep -o '"atendido
 
 A resposta inclui `atendidoPor` (nome do pod), então a distribuição das requisições entre as réplicas fica visível.
 
-## 4. Limitações desta etapa
-- Os serviços são mínimos, com dados fixos. SAGA, CQRS, Outbox e RAG serão implementados na Parte 4.
+## 4. Testes
+
+| Comando | O que prova |
+|---------|-------------|
+| `docker compose -f docker-compose.test.yml run --build --rm agendamento` | Reserva concorrente, compensação, HATEOAS, permissões e Outbox, contra um PostgreSQL descartável |
+| `scripts/verificar_outbox.sh` | Nenhum evento se perde com RabbitMQ parado, `kill -9` ou reinício do broker |
+| `scripts/verificar_isolamento.sh` | Isolamento de rede e senha dos bancos (com a stack no ar) |
+
+## 5. Limitações desta etapa
+- **Agendamento** já usa PostgreSQL, Outbox e RabbitMQ; suas consultas ainda leem o banco de escrita (o Read Model vem na etapa de CQRS). Os demais serviços seguem com dados fixos.
 - O ChromaDB (base vetorial da Triagem) ainda não está na stack; entra junto com o RAG.
 - O gateway do Compose é NGINX; no Kubernetes o papel é do Ingress. Autenticação JWT e rate limiting do Kong estão documentados em [`gateway-routing.md`](gateway-routing.md) e ficam para a Parte 4.
