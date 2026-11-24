@@ -187,6 +187,41 @@ spec:
 ---
 apiVersion: v1
 kind: Service
+metadata: { name: db-triagem-vetores, namespace: saudeconecta }
+spec:
+  clusterIP: None
+  selector: { app: db-triagem-vetores }
+  ports: [{ port: 8000 }]
+---
+# Base vetorial do RAG. O ChromaDB 1.x nao tem autenticacao: a protecao e a NetworkPolicy.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: db-triagem-vetores, namespace: saudeconecta }
+spec:
+  serviceName: db-triagem-vetores
+  replicas: 1
+  selector: { matchLabels: { app: db-triagem-vetores } }
+  template:
+    metadata: { labels: { app: db-triagem-vetores, camada: dados } }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: db-triagem-vetores
+          image: chromadb/chroma:1.5.9
+          ports: [{ containerPort: 8000 }]
+          env: [{ name: ANONYMIZED_TELEMETRY, value: "FALSE" }]
+          volumeMounts: [{ name: data, mountPath: /data }]
+          readinessProbe:
+            tcpSocket: { port: 8000 }
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 1Gi } }
+---
+apiVersion: v1
+kind: Service
 metadata: { name: db-notificacoes, namespace: saudeconecta }
 spec:
   clusterIP: None

@@ -98,8 +98,20 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER:-saude}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-troque-me-rabbit}
+      CHROMA_HOST: db-triagem-vetores
     networks: [backend, mensageria, data-triagem]
+    # A base vetorial nao e dependencia de partida: sem ela, a triagem responde sem citar fontes.
     depends_on: { db-triagem: { condition: service_healthy } }
+
+  # Carrega a base de conhecimento no ChromaDB e termina. Se ja estiver carregada, nao faz nada.
+  triagem-ingestao:
+    build: ./services/triagem
+    restart: on-failure
+    command: ["python", "-m", "app.rag.ingestao"]
+    environment: { CHROMA_HOST: db-triagem-vetores }
+    healthcheck: { disable: true }
+    networks: [data-triagem] # sem internet: o modelo de embeddings ja vem na imagem
+    depends_on: { db-triagem-vetores: { condition: service_healthy } }
 
   notificacoes:
     build: { context: ., dockerfile: services/notificacoes/Dockerfile }
@@ -183,6 +195,18 @@ services:
       timeout: 5s
       retries: 10
 
+  # Base vetorial do RAG. O ChromaDB 1.x nao tem autenticacao: a protecao e a rede, que so a Triagem alcanca.
+  db-triagem-vetores:
+    image: chromadb/chroma:1.5.9
+    environment: { ANONYMIZED_TELEMETRY: "FALSE" }
+    volumes: [triagem-vetores-data:/data]
+    networks: [data-triagem]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8000"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   db-notificacoes:
     image: redis:7-alpine
     environment:
@@ -237,6 +261,7 @@ volumes:
   agendamento-data:
   agendamento-leitura-data:
   triagem-data:
+  triagem-vetores-data:
   notificacoes-data:
   rabbitmq-data:
   chave-privada:

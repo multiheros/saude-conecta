@@ -51,6 +51,18 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
+metadata: { name: db-triagem-vetores, namespace: saudeconecta }
+spec:
+  podSelector: { matchLabels: { app: db-triagem-vetores } }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: triagem } }
+        - podSelector: { matchLabels: { app: triagem-ingestao } }
+      ports: [{ protocol: TCP, port: 8000 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
 metadata: { name: db-notificacoes, namespace: saudeconecta }
 spec:
   podSelector: { matchLabels: { app: db-notificacoes } }

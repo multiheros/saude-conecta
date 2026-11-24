@@ -131,6 +131,8 @@ spec:
           ports: [{ containerPort: 8003 }]
           envFrom: [{ configMapRef: { name: saudeconecta-config } }]
           env:
+            - name: CHROMA_HOST
+              valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: TRIAGEM_VETORES_HOST } }
             - name: DB_HOST
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: TRIAGEM_DB_HOST } }
             - name: DB_PORT
@@ -146,13 +148,41 @@ spec:
           readinessProbe:
             httpGet: { path: /ready, port: 8003 }
             periodSeconds: 5
+            timeoutSeconds: 3
           livenessProbe:
             httpGet: { path: /live, port: 8003 }
-            initialDelaySeconds: 10
+            initialDelaySeconds: 20
             periodSeconds: 15
+            timeoutSeconds: 3
           resources:
-            requests: { cpu: 50m, memory: 64Mi }
-            limits: { cpu: 250m, memory: 256Mi }
+            requests: { cpu: 100m, memory: 800Mi } # modelo de embeddings em memoria
+            limits: { cpu: "1", memory: 1200Mi }
+---
+# Carrega a base de conhecimento no ChromaDB; se ja estiver carregada, nao faz nada. Some 10 min depois de
+# terminar, para poder ser aplicado de novo.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: triagem-ingestao, namespace: saudeconecta }
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 10
+  template:
+    metadata: { labels: { app: triagem-ingestao, camada: dominio } }
+    spec:
+      enableServiceLinks: false
+      restartPolicy: OnFailure
+      containers:
+        - name: ingestao
+          image: saudeconecta/triagem:1.0
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "app.rag.ingestao"]
+          env:
+            - name: CHROMA_HOST
+              valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: TRIAGEM_VETORES_HOST } }
+            - { name: EMBEDDING_THREADS, value: "4" } # igual ao limite de CPU
+          resources:
+            requests: { cpu: 200m, memory: 800Mi }
+            limits: { cpu: "4", memory: 1500Mi }
 ---
 apiVersion: v1
 kind: Service

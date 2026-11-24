@@ -12,7 +12,7 @@ ok()   { echo "  ok    $1"; }
 erro() { echo "  FALHA $1"; falhas=$((falhas + 1)); }
 
 # servidor:porta:dono
-BANCOS="db-pacientes:5432:pacientes db-agendamento:5432:agendamento db-agendamento-leitura:27017:agendamento cache-agendamento:6379:agendamento db-triagem:27017:triagem db-notificacoes:6379:notificacoes"
+BANCOS="db-pacientes:5432:pacientes db-agendamento:5432:agendamento db-agendamento-leitura:27017:agendamento cache-agendamento:6379:agendamento db-triagem:27017:triagem db-triagem-vetores:8000:triagem db-notificacoes:6379:notificacoes"
 ORIGENS="pacientes agendamento triagem notificacoes bff-web bff-admin gateway"
 
 ip_de() {
