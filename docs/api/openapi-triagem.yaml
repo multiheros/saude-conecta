@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: |
     Classificação de urgência (LLM + RAG sobre protocolos médicos) e orientação pré-consulta.
-    Bancos: MongoDB (triagens) + ChromaDB (vetores). A classificação segue o Protocolo de Manchester (5 níveis).
+    Bancos: MongoDB (triagens) + ChromaDB (vetores). A classificação usa 5 níveis inspirados no Protocolo de Manchester.
 servers:
   - url: https://api.saudeconecta.local/api/v1
     description: Via API Gateway
@@ -120,7 +120,7 @@ paths:
                     items: { type: string }
                   fontes:
                     type: array
-                    items: { type: string, example: 'Protocolo de Acolhimento MS, p. 42' }
+                    items: { $ref: '#/components/schemas/Fonte' }
   /triagens/{id}/feedback:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -168,6 +168,7 @@ components:
         origem: { type: string, enum: [LLM, CACHE, REGRAS], description: Como a classificação foi obtida }
         fontes:
           type: array
+          description: Trechos recuperados da base. Vazio se a base estiver indisponível ou se nada passar do corte de similaridade.
           items: { $ref: '#/components/schemas/Fonte' }
         criadoEm: { type: string, format: date-time }
     Fonte:
@@ -175,7 +176,7 @@ components:
       properties:
         documento: { type: string, example: 'Caderno de Atenção Básica nº 28, vol. II' }
         secao: { type: string }
-        pagina: { type: integer }
+        pagina: { type: integer, nullable: true, description: Página impressa; nula no protocolo interno }
     Recomendacao:
       type: object
       properties:

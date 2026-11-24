@@ -224,7 +224,7 @@ Demonstração do sistema sendo levantado com Docker Compose e Kubernetes (Docke
 
 **[▶️ Assistir no YouTube](https://youtu.be/KnB0XyP8xoM)**
 
-> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A Parte 4, em andamento, substitui esses dados pela lógica real, e já cobre os 4 serviços com banco próprio, eventos, JWT, a **SAGA** completa e o **CQRS** do Agendamento.
+> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A Parte 4, em andamento, substitui esses dados pela lógica real, e já cobre os 4 serviços com banco próprio, eventos, JWT, a **SAGA** completa, o **CQRS** do Agendamento e a recuperação do **RAG** na Triagem.
 
 **Requisitos:** Docker 24+ com Compose v2. Para Kubernetes: `kubectl` e [`kind`](https://kind.sigs.k8s.io).
 
@@ -316,6 +316,7 @@ Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, 
 | [`docs/api/`](docs/api/) | Contratos OpenAPI dos 4 serviços *(Parte 2)* |
 | [`docs/decisoes-tecnicas/api-guidelines.md`](docs/decisoes-tecnicas/api-guidelines.md) | Versionamento por URI e HATEOAS *(Parte 2)* |
 | [`docs/decisoes-tecnicas/outbox-e-consistencia.md`](docs/decisoes-tecnicas/outbox-e-consistencia.md) | Consistência eventual, Dual Write e Transactional Outbox *(Parte 2)* |
+| [`docs/arquitetura/rag-triagem.md`](docs/arquitetura/rag-triagem.md) | RAG da Triagem: base, embeddings, ChromaDB e recuperação |
 | `docs/rag-avaliacao.md` | Avaliação do pipeline RAG *(Parte 4)* |
 
 ---
