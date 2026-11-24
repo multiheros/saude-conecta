@@ -16,6 +16,41 @@ tags:
   - name: Escalas
   - name: SAGA
 paths:
+  /ubs:
+    get:
+      tags: [Slots]
+      summary: Unidades (catálogo, lido do PostgreSQL)
+      responses:
+        '200':
+          description: Unidades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    nome: { type: string }
+                    endereco: { type: string }
+                    regiao: { type: string }
+  /profissionais:
+    get:
+      tags: [Slots]
+      summary: Profissionais (catálogo, lido do PostgreSQL)
+      responses:
+        '200':
+          description: Profissionais
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    nome: { type: string }
+                    especialidade: { type: string }
   /slots:
     get:
       tags: [Slots]

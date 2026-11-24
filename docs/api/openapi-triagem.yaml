@@ -12,6 +12,19 @@ tags:
   - name: Triagens
 paths:
   /triagens:
+    get:
+      tags: [Triagens]
+      summary: Triagem de uma SAGA (do próprio paciente)
+      parameters:
+        - { name: sagaId, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Triagem
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Triagem' }
+        '403': { description: De outro paciente }
+        '404': { description: Não encontrada }
     post:
       tags: [Triagens]
       summary: (SAGA passo 1) Classifica urgência a partir dos sintomas (perfil interno `servico`)
