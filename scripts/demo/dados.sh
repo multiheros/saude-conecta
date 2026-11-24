@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Enche a agenda com dados ficticios para a demonstracao, pela API real (cada agendamento passa pela SAGA).
+# As queixas sao as mesmas do aquecer.sh, para gastar pouca cota do LLM.
 # Uso, com a stack no ar:  scripts/demo/dados.sh [quantidade]      (padrao 40; G=http://host:porta muda o destino)
 set -euo pipefail
 G=${G:-http://localhost:${GATEWAY_PORTA:-8080}}; N=${1:-40}
 UBS=a1000000-0000-4000-8000-000000000001
-QUEIXAS=("dor de garganta ha dois dias" "tosse e coriza desde ontem" "febre alta e dor no corpo" "preciso renovar minha receita" "dor lombar ao levantar peso"
+QUEIXAS=("dor de garganta ha dois dias" "tosse e coriza ha dois dias" "febre alta e dor no corpo" "preciso renovar minha receita" "dor lombar ao levantar peso"
   "dor muito forte na barriga" "coceira no braco ha tres dias" "dor no peito ao subir escada" "dor de ouvido desde ontem" "exame de rotina e check-up")
 T=$(curl -sf "$G/api/v1/auth/login" -H 'content-type: application/json' -d "{\"cpf\":\"90000000175\",\"senha\":\"${SEED_SENHA:-demo12345}\"}" | sed 's/.*"accessToken":"\([^"]*\).*/\1/')
 # O limite do gateway e 100 por minuto: diante de um 429, espera e repete.
