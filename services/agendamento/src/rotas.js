@@ -17,10 +17,29 @@ function representar(a) {
   };
 }
 
-function criarRotas({ pool }) {
+function criarRotas({ pool, saga }) {
   const r = express.Router();
 
-  r.param('id', (req, _res, next, id) => next(UUID.test(id) ? undefined : new Problema(404, 'Agendamento nao encontrado')));
+  r.param('id', (req, _res, next, id) => next(UUID.test(id) ? undefined : new Problema(404, 'Recurso nao encontrado')));
+
+  // --- SAGA
+  r.post('/agendamentos', rota(async (req, res) => {
+    const { pacienteId, slotId, sintomas, idade } = req.body;
+    const chave = req.get('Idempotency-Key');
+    if (!UUID.test(pacienteId) || !UUID.test(slotId)) throw invalido('pacienteId e slotId devem ser UUID.');
+    exigirDono(req, pacienteId);
+    if (typeof sintomas !== 'string' || sintomas.trim().length < 10 || sintomas.length > 2000) throw invalido('Descreva os sintomas com 10 a 2000 caracteres.');
+    if (idade !== undefined && !inteiro(idade, 0, 130)) throw invalido('idade invalida.');
+    if (chave !== undefined && (chave.length < 1 || chave.length > 100)) throw invalido('Idempotency-Key deve ter ate 100 caracteres.');
+    const a = await saga.iniciar(req.correlationId, { pacienteId, slotId, sintomas, idade, chave });
+    res.status(202).location(`/api/v1/agendamentos/${a.id}`).type('application/hal+json').json(representar(a));
+  }));
+  r.get('/sagas/:id', rota(async (req, res) => {
+    const s = await saga.auditoria(req.params.id);
+    if (!s) throw new Problema(404, 'SAGA nao encontrada');
+    exigirDono(req, s.pacienteId);
+    res.json(s.corpo);
+  }));
 
   // --- Comandos
   const comando = (fn) => rota(async (req, res) => {
@@ -72,7 +91,7 @@ function criarRotas({ pool }) {
     res.json(rows);
   }));
   r.get('/agendamentos/:id', rota(async (req, res) => {
-    const a = await agenda.buscar(pool, req.params.id);
+    const a = await saga.agendamento(req.params.id);
     if (!a) throw new Problema(404, 'Agendamento nao encontrado');
     exigirDono(req, a.paciente_id);
     res.type('application/hal+json').json(representar(a));

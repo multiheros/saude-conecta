@@ -136,18 +136,22 @@ sequenceDiagram
     O->>NO: 4. Agendar confirmação + lembrete
     NO--xO: ❌ erro 5xx / timeout (após retries)
     Note over O: SAGA → COMPENSANDO<br/>passos concluídos: 1, 2 e 3
-    O-->>NO: ↩ C4. DELETE /notificacoes?sagaId= (defensivo, em segundo plano)
     O->>AG: ↩ C3. liberar slot (transação local)
     AG-->>O: slot LIVRE ✅ (evento SlotLiberado via Outbox)
     O->>PA: ↩ C2. DELETE /pacientes/{id}/validacao
     PA-->>O: flag revertida ✅
     O->>TR: ↩ C1. DELETE /triagens?sagaId=
     TR-->>O: descartada ✅
+    O->>NO: ↩ C4. DELETE /notificacoes?sagaId= (só se a falha foi ambígua)
     Note over O: SAGA → FALHOU (compensada)
     O-->>P: Não foi possível concluir — tente novamente
 ```
 
-> **C4 não bloqueia a cascata.** O serviço que falhou no passo 4 provavelmente ainda está fora; esperar por ele prenderia o horário do paciente. C3, C2 e C1 executam na hora, e C4 é repetida em segundo plano até o serviço voltar, para remover uma notificação que possa ter sido criada antes do timeout. Enquanto C4 estiver pendente, isso fica registrado no `saga_log`.
+> **Quando o próprio passo que falhou precisa de compensação.** O orquestrador distingue dois casos:
+> - **a conexão nunca abriu** (serviço desligado): o participante certamente não executou; não há o que desfazer;
+> - **falha ambígua** (timeout, queda no meio, 5xx): pode ter executado. A compensação dele entra **por último** na lista, porque ele provavelmente ainda está fora e esperar prenderia o horário do paciente.
+>
+> Uma compensação que falha **não impede as outras**: a SAGA fica em `COMPENSACAO_PENDENTE` e a pendente é repetida, com espera crescente, até dar certo.
 
 ### 5.3 Urgência VERMELHO
 
@@ -169,8 +173,9 @@ stateDiagram-v2
 
 | Tema | Decisão |
 |------|---------|
-| Persistência | `saga_instances(saga_id, estado, passo_atual, passos_concluidos[], payload, timeout_em)` no PostgreSQL de Agendamento, atualizada na mesma transação das mudanças |
-| Timeout por passo | Triagem: 10 s, **sem retry** (ela já resolve timeout, retry e fallback do LLM em até 8 s; repetir aqui multiplicaria a espera). Demais: 3 s, 2 retries |
+| Persistência | `saga_instances` (estado, passo atual, lista a compensar, *lease*) e `saga_log` (histórico) no PostgreSQL de Agendamento. O passo 3 e a conclusão gravam estado, dado e evento na **mesma transação** |
+| Dado de saúde | Os sintomas ficam em `saga_instances` só até o passo 1 terminar; depois são apagados (Agendamento não guarda dado clínico) |
+| Timeout por passo | Triagem: 10 s, **sem retry por timeout** (ela já resolve timeout, retry e fallback do LLM em até 8 s; repetir aqui multiplicaria a espera). Demais: 3 s, 2 retries |
 | Falha de notificação | Tratada como falha da SAGA (conforme requisito). Alternativa avaliada: tornar passo 4 *"best effort"* via evento (ver trade-off abaixo) |
 | Idempotência | Toda ação remota leva `Idempotency-Key = sagaId:passo`; compensações são por `sagaId` e `DELETE` repetido devolve `204` |
 | Flag "em andamento" | Guarda o `sagaId` dono. Limpa por C2 (falha) ou por `AgendamentoCriado` (sucesso) |
@@ -179,8 +184,17 @@ stateDiagram-v2
 | Resposta ao usuário | `POST /agendamentos` → `202` + `Location`; o id é gerado no POST e `AgendamentoSolicitado` projeta `PENDENTE`. Status final via `GET /agendamentos/{id}` (`AGENDADO` ou `CANCELADO`, com `motivo`). A leitura pode levar até 5 s para enxergar o novo id; até lá o BFF usa o corpo do `202` |
 | Auditoria | `GET /sagas/{id}`: estado, passos, compensações e horários |
 | Rastreio | `sagaId` + `X-Correlation-Id` em logs e eventos |
-| Retomada | Cada SAGA tem um *lease* (`locked_until`). Qualquer réplica assume, com `FOR UPDATE SKIP LOCKED`, as que expiraram em `EM_ANDAMENTO`, `COMPENSANDO` ou `COMPENSACAO_PENDENTE` |
+| Retomada | Cada SAGA tem um *lease* (`locked_until`, 15 s, renovado a cada passo). Toda gravação confere o dono do *lease* (*fencing*): uma réplica que travou e voltou não consegue prosseguir. Qualquer réplica assume, com `FOR UPDATE SKIP LOCKED`, as que expiraram em `EM_ANDAMENTO`, `COMPENSANDO` ou `COMPENSACAO_PENDENTE` |
 
 **Trade-off do passo 4:** notificação é periférica; falhar a SAGA devolve o slot por uma falha de SMS. A especificação do projeto trata o passo como compensável (rigor máximo); em evolução futura pode virar evento assíncrono com *retry* (a reserva já estaria garantida).
 
 > O estado final alimenta o Read Model — ver [`cqrs-agendamento.md`](cqrs-agendamento.md).
+
+## 6. Como comprovar
+
+```bash
+scripts/testar.sh agendamento    # falha em cada passo, ambígua ou não; queda de réplica; concorrência
+scripts/verificar_saga.sh        # stack real: Notificações desligado, Triagem morta, kill -9 no orquestrador
+```
+
+Com a stack no ar, `GET /api/v1/sagas/{id}` mostra cada passo e cada compensação com horário e duração.

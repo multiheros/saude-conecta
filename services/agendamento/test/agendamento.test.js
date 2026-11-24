@@ -8,6 +8,7 @@ const agenda = require('../src/agenda');
 const outbox = require('../../../libs/comum/outbox');
 const { criarApp } = require('../../../libs/comum/http');
 const { criarRotas } = require('../src/rotas');
+const { criarOrquestrador } = require('../src/saga');
 const { semear, UBS, PROFISSIONAIS } = require('../src/seed');
 
 const pool = criarPool();
@@ -18,13 +19,14 @@ let server, base;
 
 before(async () => {
   for (let i = 0; ; i++) { try { await pool.query('SELECT 1'); break; } catch (e) { if (i > 30) throw e; await new Promise((r) => setTimeout(r, 500)); } }
+  await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public');
   await migrar(pool);
   await semear(pool);
-  server = criarApp({ nome: 'teste', rotas: criarRotas({ pool }), pronto: async () => ({ db: 'up' }) }).listen(0);
+  server = criarApp({ nome: 'teste', rotas: criarRotas({ pool, saga: criarOrquestrador({ pool }) }), pronto: async () => ({ db: 'up' }) }).listen(0);
   base = `http://127.0.0.1:${server.address().port}/api/v1`;
 });
 beforeEach(async () => {
-  await pool.query('TRUNCATE agendamentos, outbox_events');
+  await pool.query('TRUNCATE agendamentos, outbox_events, saga_log, saga_instances');
   await pool.query("UPDATE slots SET status='LIVRE'");
 });
 after(async () => { server.close(); await pool.end(); });

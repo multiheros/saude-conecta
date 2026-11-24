@@ -14,7 +14,7 @@ paths:
   /triagens:
     post:
       tags: [Triagens]
-      summary: (SAGA passo 1) Classifica urgência a partir dos sintomas
+      summary: (SAGA passo 1) Classifica urgência a partir dos sintomas (perfil interno `servico`)
       description: |
         Latência alvo p95 <= 8 s. Resultado é **temporário** até o evento `AgendamentoCriado`.
         Com o LLM indisponível responde `201` por regras (`origem: REGRAS`), sem falhar a SAGA.
@@ -33,6 +33,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Triagem' }
+        '409': { description: SAGA já encerrada (pedido atrasado) }
         '422':
           description: Sintomas insuficientes
           content:

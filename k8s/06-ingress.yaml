@@ -34,6 +34,7 @@ spec:
           - { path: /api/v1/pacientes, pathType: Prefix, backend: { service: { name: pacientes, port: { number: 8001 } } } }
           - { path: /api/v1/auth, pathType: Prefix, backend: { service: { name: pacientes, port: { number: 8001 } } } }
           - { path: /api/v1/agendamentos, pathType: Prefix, backend: { service: { name: agendamento, port: { number: 8002 } } } }
+          - { path: /api/v1/sagas, pathType: Prefix, backend: { service: { name: agendamento, port: { number: 8002 } } } }
           - { path: /api/v1/slots, pathType: Prefix, backend: { service: { name: agendamento, port: { number: 8002 } } } }
           - { path: /api/v1/escalas, pathType: Prefix, backend: { service: { name: agendamento, port: { number: 8002 } } } }
           - { path: /api/v1/relatorios, pathType: Prefix, backend: { service: { name: agendamento, port: { number: 8002 } } } }

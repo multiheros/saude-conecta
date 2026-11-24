@@ -16,6 +16,11 @@ services:
     environment: { DB_HOST: redis }
     depends_on: { redis: { condition: service_healthy } }
 
+  triagem:
+    build: { context: ./services/triagem, target: teste }
+    environment: { DB_HOST: mongo, RABBITMQ_HOST: rabbitmq, RABBITMQ_USER: teste, RABBITMQ_PASSWORD: teste }
+    depends_on: { mongo: { condition: service_healthy }, rabbitmq: { condition: service_healthy } }
+
   pg-agendamento: &pg
     image: postgres:16-alpine
     environment: { POSTGRES_USER: teste, POSTGRES_PASSWORD: teste, POSTGRES_DB: teste }
@@ -25,6 +30,10 @@ services:
   redis:
     image: redis:7-alpine
     healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 2s, retries: 20 }
+  mongo:
+    image: mongo:7
+    tmpfs: [/data/db]
+    healthcheck: { test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"], interval: 3s, timeout: 5s, retries: 20 }
   rabbitmq:
     build: ./infra/rabbitmq
     environment: { RABBITMQ_USER: teste, RABBITMQ_PASSWORD: teste }

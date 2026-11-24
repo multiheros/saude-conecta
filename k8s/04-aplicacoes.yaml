@@ -129,6 +129,14 @@ spec:
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: TRIAGEM_DB_HOST } }
             - name: DB_PORT
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: TRIAGEM_DB_PORT } }
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: triagem-db, key: DB_USER } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: triagem-db, key: DB_PASSWORD } }
+            - name: RABBITMQ_USER
+              valueFrom: { secretKeyRef: { name: rabbitmq, key: RABBITMQ_USER } }
+            - name: RABBITMQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: rabbitmq, key: RABBITMQ_PASSWORD } }
           readinessProbe:
             httpGet: { path: /ready, port: 8003 }
             periodSeconds: 5
