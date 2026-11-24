@@ -1,0 +1,153 @@
+# Configuracao declarativa do gateway (Kong sem banco). Regras: docs/gateway-routing.md.
+# iniciar.sh troca @@...@@ na partida. So existe rota para o que pode vir de fora: os passos da SAGA
+# (POST /triagens, POST /notificacoes, /pacientes/{id}/validacao), /metricas e /ready nao tem rota.
+_format_version: "3.0"
+_transform: true
+
+# --- Quem pode entrar. `key` e o `iss` do token, um por perfil; a chave privada so existe em Pacientes.
+consumers:
+  - username: paciente
+    acls: [{ group: paciente }]
+    jwt_secrets:
+      - key: saudeconecta-paciente
+        algorithm: RS256
+        rsa_public_key: |
+          @@CHAVE_PUBLICA@@
+  - username: gestor
+    acls: [{ group: gestor }]
+    jwt_secrets:
+      - key: saudeconecta-gestor
+        algorithm: RS256
+        rsa_public_key: |
+          @@CHAVE_PUBLICA@@
+
+# --- Em toda requisicao, nesta ordem: correlacao, limite por IP, JWT e perfil (por rota), identidade.
+plugins:
+  - name: correlation-id
+    config: { header_name: X-Correlation-Id, generator: uuid, echo_downstream: true }
+  - name: limite-antes
+    config:
+      minute: @@LIMITE@@
+      limit_by: ip
+      policy: redis # contador unico entre as replicas do gateway
+      fault_tolerant: true # Redis fora: libera (disponibilidade acima do limite)
+      redis: { host: "@@REDIS@@", port: 6379, password: "{vault://env/limite-senha}", timeout: 300 }
+  - name: identidade
+    config: { audiencia: saudeconecta }
+
+services:
+  - name: bff-web
+    url: http://bff-web:3001
+    connect_timeout: 2000
+    read_timeout: 16000 # a recomendacao de horarios pode levar 12 s com o LLM lento
+    retries: 1
+    routes:
+      - name: bff-web
+        paths: [/web/v1]
+        strip_path: true
+        plugins: [&jwt { name: jwt, config: { claims_to_verify: [exp], key_claim_name: iss, uri_param_names: [], cookie_names: [] } }, &so-paciente { name: acl, config: { allow: [paciente], hide_groups_header: true } }]
+
+  - name: bff-admin
+    url: http://bff-admin:3002
+    connect_timeout: 2000
+    read_timeout: 10000
+    retries: 1
+    routes:
+      - name: bff-admin
+        paths: [/admin/v1]
+        strip_path: true
+        plugins: [*jwt, &so-gestor { name: acl, config: { allow: [gestor], hide_groups_header: true } }]
+
+  - name: pacientes
+    url: http://pacientes:8001
+    connect_timeout: 2000
+    read_timeout: 10000
+    retries: 1
+    routes:
+      - { name: login, methods: [POST], paths: ["~/api/v1/auth/login$"], strip_path: false }
+      - { name: cadastro, methods: [POST], paths: ["~/api/v1/pacientes$"], strip_path: false }
+      - name: pacientes-gestor
+        methods: [GET]
+        paths: ["~/api/v1/pacientes$", "~/api/v1/pacientes/estatisticas$"]
+        regex_priority: 10
+        strip_path: false
+        plugins: [*jwt, *so-gestor]
+      - name: pacientes
+        methods: [GET, PUT]
+        paths: ["~/api/v1/pacientes/[0-9a-fA-F-]{36}$", "~/api/v1/pacientes/[0-9a-fA-F-]{36}/historico$"]
+        strip_path: false
+        plugins: [*jwt, &os-dois { name: acl, config: { allow: [paciente, gestor], hide_groups_header: true } }]
+
+  - name: agendamento
+    url: http://agendamento:8002
+    connect_timeout: 2000
+    read_timeout: 10000
+    retries: 1
+    routes:
+      - name: agendamento-gestor
+        paths: ["~/api/v1/escalas$", "~/api/v1/relatorios/ocupacao$", "~/api/v1/agendamentos/[0-9a-fA-F-]{36}/comparecimento$"]
+        regex_priority: 10
+        strip_path: false
+        plugins: [*jwt, *so-gestor]
+      - name: agendamento
+        methods: [GET, POST]
+        paths:
+          - "~/api/v1/agendamentos$"
+          - "~/api/v1/agendamentos/[0-9a-fA-F-]{36}$"
+          - "~/api/v1/agendamentos/[0-9a-fA-F-]{36}/(confirmacao|reagendamento|cancelamento)$"
+          - "~/api/v1/sagas/[0-9a-fA-F-]{36}$"
+          - "~/api/v1/(slots|ubs|profissionais)$"
+        strip_path: false
+        plugins: [*jwt, *os-dois]
+
+  - name: triagem
+    url: http://triagem:8003
+    connect_timeout: 2000
+    read_timeout: 16000
+    retries: 1
+    routes:
+      - name: triagem-gestor
+        paths: ["~/api/v1/triagens/saude-llm$", "~/api/v1/triagens/[0-9a-fA-F-]{36}/feedback$"]
+        regex_priority: 10
+        strip_path: false
+        plugins: [*jwt, *so-gestor]
+      - name: triagem-recomendacoes
+        methods: [POST]
+        paths: ["~/api/v1/triagens/recomendacoes$"]
+        strip_path: false
+        plugins: [*jwt, *os-dois]
+      - name: triagem
+        methods: [GET]
+        paths: ["~/api/v1/triagens$", "~/api/v1/triagens/[0-9a-fA-F-]{36}$", "~/api/v1/triagens/[0-9a-fA-F-]{36}/orientacoes$"]
+        strip_path: false
+        plugins: [*jwt, *os-dois]
+
+  - name: notificacoes
+    url: http://notificacoes:8004
+    connect_timeout: 2000
+    read_timeout: 10000
+    retries: 1
+    routes:
+      - name: notificacoes-gestor
+        methods: [GET]
+        paths: ["~/api/v1/notificacoes/alertas$"]
+        regex_priority: 10
+        strip_path: false
+        plugins: [*jwt, *so-gestor]
+      - name: notificacoes
+        methods: [GET]
+        paths: ["~/api/v1/notificacoes$", "~/api/v1/notificacoes/[0-9a-fA-F-]{36}$"]
+        strip_path: false
+        plugins: [*jwt, *os-dois]
+      # O caminho comeca com /pacientes, mas o dono das preferencias e Notificacoes.
+      - name: preferencias
+        methods: [GET, PUT]
+        paths: ["~/api/v1/pacientes/[0-9a-fA-F-]{36}/preferencias-notificacao$"]
+        regex_priority: 10
+        strip_path: false
+        plugins: [*jwt, *os-dois]
+
+routes:
+  - name: saude
+    paths: ["~/health$"]
+    plugins: [{ name: request-termination, config: { status_code: 200, message: ok } }]

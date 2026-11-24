@@ -1,4 +1,4 @@
-# SaudeConecta - stack completa (Parte 3)
+# SaudeConecta - stack completa
 # Sobe tudo com:  docker compose up -d --build
 # Entrada unica: http://localhost:8080
 
@@ -7,29 +7,52 @@ x-node-service: &svc-defaults
 
 services:
   # ---------- Borda ----------
+  # Kong sem banco. Valida o JWT com a chave publica; a privada so existe em Pacientes.
   gateway:
     build: ./gateway
-    ports: ["8080:80"]
-    networks: [frontend, backend]
-    depends_on: [bff-web, bff-admin, pacientes, agendamento, triagem, notificacoes]
-    restart: unless-stopped
+    <<: *svc-defaults
+    ports: ["${GATEWAY_PORTA:-8080}:8000"]
+    environment:
+      LIMITE_POR_MINUTO: ${LIMITE_POR_MINUTO:-100}
+      LIMITE_REDIS_HOST: cache-gateway
+      LIMITE_SENHA: ${GATEWAY_CACHE_PASSWORD:-troque-me-gateway}
+    volumes: [chave-publica:/chaves:ro]
+    networks: [frontend, backend, data-gateway]
+    depends_on:
+      chaves: { condition: service_completed_successfully }
+
+  # Contador do limite de requisicoes, unico entre replicas do gateway. Se cair, o gateway libera.
+  cache-gateway:
+    image: redis:7-alpine
+    environment:
+      REDISCLI_AUTH: ${GATEWAY_CACHE_PASSWORD:-troque-me-gateway}
+    command: ["sh", "-c", "exec redis-server --save '' --appendonly no --maxmemory 32mb --maxmemory-policy allkeys-lru --requirepass \"$$REDISCLI_AUTH\""]
+    networks: [data-gateway]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   bff-web:
-    build: ./bff/web
+    build: { context: ., dockerfile: bff/web/Dockerfile }
     <<: *svc-defaults
     environment:
       PACIENTES_URL: http://pacientes:8001
       AGENDAMENTO_URL: http://agendamento:8002
+      TRIAGEM_URL: http://triagem:8003
     networks: [frontend, backend]
-    depends_on: [pacientes, agendamento]
+    depends_on: [pacientes, agendamento, triagem]
 
   bff-admin:
-    build: ./bff/admin
+    build: { context: ., dockerfile: bff/admin/Dockerfile }
     <<: *svc-defaults
     environment:
       PACIENTES_URL: http://pacientes:8001
       AGENDAMENTO_URL: http://agendamento:8002
       NOTIFICACOES_URL: http://notificacoes:8004
+      TRIAGEM_URL: http://triagem:8003
+      CACHE_SEGUNDOS: ${CACHE_SEGUNDOS:-30}
     networks: [frontend, backend]
     depends_on: [pacientes, agendamento, notificacoes]
 
@@ -258,6 +281,8 @@ networks:
   data-triagem:
     internal: true
   data-notificacoes:
+    internal: true
+  data-gateway:
     internal: true
 
 volumes:

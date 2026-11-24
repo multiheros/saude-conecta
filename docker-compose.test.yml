@@ -21,6 +21,11 @@ services:
     environment: { DB_HOST: mongo, RABBITMQ_HOST: rabbitmq, RABBITMQ_USER: teste, RABBITMQ_PASSWORD: teste, CHROMA_HOST: chroma }
     depends_on: { mongo: { condition: service_healthy }, rabbitmq: { condition: service_healthy }, chroma: { condition: service_started } }
 
+  bff-web:
+    build: { context: ., dockerfile: bff/web/Dockerfile, target: teste }
+  bff-admin:
+    build: { context: ., dockerfile: bff/admin/Dockerfile, target: teste }
+
   pg-agendamento: &pg
     image: postgres:16-alpine
     environment: { POSTGRES_USER: teste, POSTGRES_PASSWORD: teste, POSTGRES_DB: teste }
