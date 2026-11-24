@@ -7,6 +7,8 @@
 # Uso: scripts/verificar_outbox.sh
 set -uo pipefail
 cd "$(dirname "$0")/.."
+export GEMINI_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
+BUILD=--build; [ -n "${SEM_BUILD:-}" ] && BUILD=--no-build # SEM_BUILD=1: usa as imagens ja prontas
 export COMPOSE_PROJECT_NAME=saudeconecta-outbox
 dc() { docker compose "$@" 2>/dev/null; }
 trap 'dc down -v >/dev/null' EXIT
@@ -20,7 +22,7 @@ http()       { dc exec -T agendamento node -e "fetch('http://127.0.0.1:8002$2',{
 espera()     { local t0; t0=$(date +%s%N); for _ in $(seq 150); do [ "$(eval "$1")" = "$2" ] && { echo $(( ($(date +%s%N) - t0) / 1000000 )); return 0; }; sleep 0.2; done; return 1; }
 
 echo "0. Subindo Agendamento, PostgreSQL e RabbitMQ"
-SUBIDA=$(docker compose up -d --build --no-deps db-agendamento rabbitmq agendamento 2>&1) || falha "nao subiu: $(grep -iE 'error|unhealthy|failed' <<< "$SUBIDA" | tail -3)"
+SUBIDA=$(docker compose up -d $BUILD --no-deps db-agendamento rabbitmq agendamento 2>&1) || falha "nao subiu: $(grep -iE 'error|unhealthy|failed' <<< "$SUBIDA" | tail -3)"
 espera 'http GET /ready' 200 >/dev/null || falha "servico nao ficou pronto"
 espera pendentes 0 >/dev/null || falha "outbox nao esvaziou"
 sleep 2; antes=$(fila); ok "outbox vazio, $antes mensagens na fila"

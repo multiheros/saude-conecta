@@ -10,6 +10,8 @@
 # Uso: scripts/verificar_llm.sh      (~3 min)
 set -uo pipefail
 cd "$(dirname "$0")/.."
+export GEMINI_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
+BUILD=--build; [ -n "${SEM_BUILD:-}" ] && BUILD=--no-build # SEM_BUILD=1: usa as imagens ja prontas
 export COMPOSE_PROJECT_NAME=saudeconecta-llm COMPOSE_FILE=docker-compose.yml:scripts/llm-falso.compose.yml
 dc() { docker compose "$@" 2>/dev/null; }
 trap 'dc down -v >/dev/null' EXIT
@@ -39,7 +41,7 @@ print(t.get('origem'), len(t.get('fontes',[]))>0)"; }
 recomendar() { js "const r=await pede('POST',T+'/recomendacoes',{'X-User-Role':'paciente'},{sintomas:'$1',idade:40,ubsId:'$UBS'});console.log($2)"; }
 
 echo "0. Subindo a stack (com a base do RAG)"
-SUBIDA=$(docker compose up -d --build agendamento pacientes triagem notificacoes rabbitmq db-agendamento-leitura cache-agendamento db-triagem-vetores triagem-ingestao gemini-falso 2>&1) || falha "nao subiu: $(grep -iE 'error|unhealthy|failed' <<< "$SUBIDA" | tail -3)"
+SUBIDA=$(docker compose up -d $BUILD agendamento pacientes triagem notificacoes rabbitmq db-agendamento-leitura cache-agendamento db-triagem-vetores triagem-ingestao gemini-falso 2>&1) || falha "nao subiu: $(grep -iE 'error|unhealthy|failed' <<< "$SUBIDA" | tail -3)"
 for s in 127.0.0.1:8002 pacientes:8001 triagem:8003 notificacoes:8004; do pronto $s; done
 for _ in $(seq 300); do [ "$(docker inspect -f '{{.State.Status}}' "$(dc ps -aq triagem-ingestao)")" = exited ] && break; sleep 1; done
 espera "triar 'aquecimento da base de conhecimento' 9000 >/dev/null; base" up; ok "pronta"

@@ -8,6 +8,8 @@
 # Uso: scripts/verificar_telas.sh [pasta]    (~4 min; com pasta, guarda as imagens nela)
 set -uo pipefail
 cd "$(dirname "$0")/.."
+export GEMINI_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
+BUILD=--build; [ -n "${SEM_BUILD:-}" ] && BUILD=--no-build # SEM_BUILD=1: usa as imagens ja prontas
 export COMPOSE_PROJECT_NAME=saudeconecta-telas GATEWAY_PORTA=${GATEWAY_PORTA:-18082} LIMITE_POR_MINUTO=5000 CACHE_SEGUNDOS=1
 G=http://127.0.0.1:$GATEWAY_PORTA
 SAIDA=${1:+$(mkdir -p "$1" && cd "$1" && pwd)}; SAIDA=${SAIDA:-$(mktemp -d)}; chmod 777 "$SAIDA"
@@ -18,7 +20,7 @@ cod()    { curl -s -m 5 -o /dev/null -w '%{http_code}' "$@"; }
 
 echo "0. Subindo a stack"
 docker build -q -t saudeconecta-e2e clientes/e2e >/dev/null || exit 1
-SUBIDA=$(docker compose up -d --build --quiet-pull 2>&1) || { echo "  FALHA nao subiu: $(grep -iE 'error|unhealthy|failed' <<< "$SUBIDA" | tail -3)"; exit 1; }
+SUBIDA=$(docker compose up -d $BUILD --quiet-pull 2>&1) || { echo "  FALHA nao subiu: $(grep -iE 'error|unhealthy|failed' <<< "$SUBIDA" | tail -3)"; exit 1; }
 espera "cod $G/" 200; espera "cod $G/painel" 200; espera "cod $G/health" 200
 for _ in $(seq 300); do [ "$(docker inspect -f '{{.State.Status}}' "$(docker compose ps -aq triagem-ingestao 2>/dev/null)")" = exited ] && break; sleep 1; done
 for _ in $(seq 10); do G=$G scripts/demo/dados.sh >/dev/null 2>&1 && break; sleep 3; done
