@@ -26,8 +26,10 @@ paths:
         - { name: dataInicio, in: query, schema: { type: string, format: date } }
         - { name: dataFim, in: query, schema: { type: string, format: date } }
       responses:
+        '400': { description: Parâmetros inválidos }
+        '503': { $ref: '#/components/responses/LeituraIndisponivel' }
         '200':
-          description: Slots disponíveis (Read Model)
+          description: Slots disponíveis (Read Model). No máximo 200, do mais próximo ao mais distante
           content:
             application/json:
               schema:
@@ -53,7 +55,7 @@ paths:
           headers:
             Location:
               schema: { type: string }
-              example: /api/v1/agendamentos/3fa85f64-5717-4562-b3fc-2c963f66afa6
+              example: /api/v1/agendamentos/3fa85f64-5717-4562-b3fc-2c963f66afa6?versaoMinima=0
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Agendamento' }
@@ -83,13 +85,17 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Agendamento' }
                   page: { type: integer }
+                  size: { type: integer }
                   total: { type: integer }
+        '503': { $ref: '#/components/responses/LeituraIndisponivel' }
   /agendamentos/{id}:
     parameters:
       - { $ref: '#/components/parameters/AgendamentoId' }
     get:
       tags: [Agendamentos]
       summary: Obtém agendamento (HATEOAS)
+      parameters:
+        - { name: versaoMinima, in: query, description: Espera até 2 s a leitura alcançar esta versão (read-your-writes), schema: { type: integer, minimum: 0 } }
       description: |
         Os links variam conforme `status`:
 
@@ -120,6 +126,7 @@ paths:
                       confirmar: { href: /api/v1/agendamentos/3fa85f64-5717-4562-b3fc-2c963f66afa6/confirmacao, method: POST }
                       reagendar: { href: /api/v1/agendamentos/3fa85f64-5717-4562-b3fc-2c963f66afa6/reagendamento, method: POST }
                       cancelar: { href: /api/v1/agendamentos/3fa85f64-5717-4562-b3fc-2c963f66afa6/cancelamento, method: POST }
+        '503': { $ref: '#/components/responses/LeituraIndisponivel' }
         '404':
           description: Não encontrado
           content:
@@ -221,8 +228,8 @@ paths:
       tags: [Agendamentos]
       summary: Indicadores agregados de ocupação e absenteísmo (bff-admin)
       description: |
-        Servido pelo Read Model (coleção `ocupacao_ubs`, CQRS). Defasagem ≤ 5 s,
-        informada em `defasagemSegundos`. Apenas perfil `gestor`; não contém dados pessoais.
+        Servido pelo Read Model (CQRS). O mês é o da consulta. Defasagem ≤ 5 s; `defasagemSegundos` é o
+        atraso do último evento projetado. Apenas perfil `gestor`; não contém dados pessoais.
       parameters:
         - { name: ubsId, in: query, required: true, schema: { type: string, format: uuid } }
         - { name: periodo, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$', example: '2026-11' } }
@@ -244,9 +251,10 @@ paths:
                     type: object
                     additionalProperties: { type: integer }
                   porUrgencia:
+                    description: Não conta cancelados
                     type: object
                     additionalProperties: { type: integer }
-                  taxaAbsenteismo: { type: number }
+                  taxaAbsenteismo: { type: number, description: Faltas sobre comparecimentos registrados (%) }
                   serieDiaria:
                     type: array
                     items:
@@ -255,9 +263,10 @@ paths:
                         data: { type: string, format: date }
                         agendados: { type: integer }
                         faltas: { type: integer }
-                  defasagemSegundos: { type: integer }
+                  defasagemSegundos: { type: number, nullable: true }
         '400': { description: Parâmetros inválidos }
         '403': { description: Apenas perfil gestor }
+        '503': { $ref: '#/components/responses/LeituraIndisponivel' }
   /escalas:
     post:
       tags: [Escalas]
@@ -291,6 +300,12 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+  responses:
+    LeituraIndisponivel:
+      description: Modelo de leitura fora do ar; os comandos continuam
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
   schemas:
     StatusAgendamento:
       type: string
@@ -319,13 +334,28 @@ components:
         id: { type: string, format: uuid }
         status: { $ref: '#/components/schemas/StatusAgendamento' }
         pacienteId: { type: string, format: uuid }
+        pacienteNome: { type: string, description: Só nas consultas }
         slotId: { type: string, format: uuid }
         dataHora: { type: string, format: date-time }
         especialidade: { type: string }
         classificacaoUrgencia: { type: string, enum: [VERMELHO, LARANJA, AMARELO, VERDE, AZUL] }
         sagaId: { type: string, format: uuid }
         motivo: { type: string, description: Preenchido quando CANCELADO }
-        atualizadoEm: { type: string, format: date-time, description: Instante da projeção (CQRS) }
+        profissional:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            nome: { type: string }
+            especialidade: { type: string }
+        ubs:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            nome: { type: string }
+            endereco: { type: string }
+        versao: { type: integer, description: Versão do agendamento; use em `versaoMinima` }
+        atualizadoEm: { type: string, format: date-time, description: Instante da escrita }
+        projetadoEm: { type: string, format: date-time, description: Instante da projeção (CQRS); só nas consultas }
     Link:
       type: object
       required: [href]

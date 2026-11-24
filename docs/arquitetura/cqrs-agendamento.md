@@ -106,26 +106,35 @@ Cada store atende a um padrão de consulta:
 | Store | Conteúdo | Padrão | Por quê |
 |-------|----------|--------|---------|
 | **MongoDB** `agendamentos_view` | Documento do agendamento já "achatado" (+ UBS, profissional, texto de exibição) | `GET /agendamentos/{id}`, listagens, filtros | Documento único por tela, sem joins |
-| **MongoDB** `ocupacao_ubs` | Contadores por UBS × especialidade × dia | Dashboard do gestor | Agregado pré-calculado (incremento atômico `$inc`) |
-| **Redis** `slots:{ubs}:{espec}:{data}` (set/hash, TTL) | Slots livres | `GET /slots` (hot path) | Latência de submilissegundos |
+| **MongoDB** `ocupacao_ubs` | Um documento por UBS × especialidade × dia, com as vagas do dia e os contadores | Dashboard do gestor; carga do cache | Agregado pré-calculado |
+| **Redis** `slots:{ubs}` (hash, campo `{espec}\|{dia}`, TTL 60 s) | Vagas livres de cada dia | `GET /slots` (hot path) | Uma ida ao cache por consulta |
+| **MongoDB** `pacientes_view` | Nome do paciente (réplica de exibição, via `PacienteAtualizado`) | Preenche `agendamentos_view` | O nome pertence a Pacientes |
+
+**Por que não `$inc`:** um evento repetido contaria a mesma reserva duas vezes. O documento do dia guarda cada vaga com a sua versão, e os contadores são recalculados na mesma atualização, que é atômica por ser um documento só. Aplicar o evento de novo, ou fora de ordem, não muda o resultado.
+
+**Ordem no Redis:** cada campo leva uma revisão (`rev`, soma das versões das vagas do dia) e só é trocado por uma revisão maior (script Lua). Uma consulta lenta que leu o MongoDB antes não apaga a atualização que chegou depois.
 
 ```jsonc
 // agendamentos_view
 {
   "_id": "3fa85f64-...",
   "status": "AGENDADO",
-  "paciente": { "id": "7c9e...", "nome": "Maria da Silva" },   // cópia de exibição
+  "paciente": { "id": "7c9e...", "nome": "Maria da Silva", "versao": 3 },   // cópia de exibição
   "slot": { "id": "9b2d...", "inicio": "2026-11-05T09:30:00-03:00" },
   "ubs": { "id": "a1b2...", "nome": "UBS Centro" },
   "profissional": { "nome": "Dra. Ana Souza", "especialidade": "Clínica Geral" },
   "urgencia": "AMARELO",
-  "lastEventId": "e5c1...",          // idempotência/ordenação
-  "aggregateVersion": 3,             // descarta eventos fora de ordem
-  "atualizadoEm": "2026-11-05T10:00:03Z"
+  "versao": 3,                       // versão do agregado: descarta repetidos e fora de ordem
+  "ultimoEventoId": "e5c1...",       // rastreio
+  "criadoEm": "2026-11-05T09:59:40Z",
+  "atualizadoEm": "2026-11-05T10:00:03.100Z",   // gravação no PostgreSQL
+  "projetadoEm": "2026-11-05T10:00:03.480Z"     // chegada ao Read Model
 }
 ```
 
-> **Descartável e reconstruível:** o Read Model pode ser apagado e **reprojetado** a partir dos eventos/Write Model. Redis tem TTL e é cache; MongoDB é a projeção durável.
+> `GET /sagas/{id}` é auditoria da orquestração e continua lendo o PostgreSQL; todas as outras consultas usam só o Read Model.
+>
+> **Descartável e reconstruível:** se o MongoDB volta vazio, o serviço o reconstrói sozinho a partir do PostgreSQL. Para apagar e refazer à mão: `docker compose exec agendamento node reprojetar.js`. As duas formas rodam com o sistema no ar, porque a versão protege contra sobrescrever um evento mais novo. Os nomes que faltarem são pedidos ao serviço de Pacientes.
 
 ## 5. Pipeline de sincronização assíncrona
 
@@ -148,9 +157,8 @@ sequenceDiagram
     POL->>MQ: publish SlotReservado + confirm
     POL->>PG: status = PUBLISHED
     MQ->>PRJ: entrega (fila agendamento.projetor)
-    PRJ->>PRJ: dedup por eventId, ignora se aggregateVersion <= atual
-    PRJ->>MG: upsert agendamentos_view e $inc ocupacao_ubs
-    PRJ->>RD: remove slot do set de livres
+    PRJ->>MG: atualiza se aggregateVersion > versão atual<br/>(agendamentos_view ou ocupacao_ubs)
+    PRJ->>RD: regrava o dia, se a revisão for maior
     PRJ->>MQ: ack
     Note over PG,RD: t ≤ 5 s (SLA)
     Q->>RD: GET /slots → slot já ausente
@@ -162,14 +170,15 @@ sequenceDiagram
 | Evento | Efeito na projeção |
 |--------|-------------------|
 | `AgendamentoSolicitado` | Cria `agendamentos_view` em `PENDENTE` |
-| `SlotReservado` | Remove slot de `slots:*`; `ocupacao_ubs.reservados += 1` |
-| `SlotLiberado` | Devolve slot a `slots:*`; `reservados -= 1` |
+| `SlotReservado` | Vaga do dia vira `RESERVADO`; contadores e cache recalculados |
+| `SlotLiberado` | Vaga do dia volta a `LIVRE`; idem |
 | `AgendamentoCriado` | `status = AGENDADO`, com urgência |
 | `AgendamentoConfirmado` | `status = CONFIRMADO` |
 | `AgendamentoReagendado` | Troca o horário do agendamento (os slots vêm em `SlotLiberado` + `SlotReservado`) |
 | `AgendamentoCancelado` | `status = CANCELADO`, com `motivo` |
 | `AtendimentoRealizado` / `FaltaRegistrada` | Atualiza status e absenteísmo |
 | `EscalaCriada` | Carrega novos slots livres |
+| `PacienteAtualizado` (de Pacientes) | Nome de exibição em `pacientes_view` e nos agendamentos do paciente |
 
 > Cada evento altera **uma** coisa: contadores de vaga só mudam em `SlotReservado`/`SlotLiberado`, e status só nos eventos `Agendamento*`. Assim um cancelamento não devolve a mesma vaga duas vezes.
 
@@ -190,27 +199,35 @@ sequenceDiagram
 
 | Cenário | Tratamento |
 |---------|-----------|
-| Evento duplicado (*at-least-once*) | Dedup por `eventId` (`lastEventId`/`processed_events`) |
+| Evento duplicado (*at-least-once*) | `aggregateVersion` igual à atual: não muda nada. Dispensa tabela de eventos processados |
 | Evento fora de ordem | `aggregateVersion`: aplica só se maior que a versão atual; senão descarta |
 | Projetor fora do ar | Mensagens acumulam na fila durável; ao voltar, drena (lag sobe, alerta) |
-| Falha no processamento | Retry exponencial → DLQ + alerta |
-| Read Model corrompido/perdido | **Reprojeção** completa a partir do Write Model (`aggregate_id`/Outbox histórico) |
+| Duas réplicas consumindo a mesma fila | Podem inverter a ordem; a versão resolve |
+| Parada entre MongoDB e Redis | A mensagem é reentregue; o cache é regravado mesmo sem mudança no MongoDB |
+| MongoDB fora | O projetor insiste sem gastar tentativas; a fila acumula. Consultas respondem `503`; comandos e SAGA continuam |
+| Redis fora | Projeção e consultas seguem pelo MongoDB; ao voltar, as UBS alteradas nesse tempo são descartadas do cache. Se o processo morrer antes disso, o cache pode mostrar uma vaga ocupada por até 60 s (TTL); a reserva continua segura |
+| Evento inválido | 3 tentativas → DLQ |
+| Read Model perdido ou corrompido | Reconstrução a partir do Write Model (automática se vazio) |
 | Outbox travado | Alerta quando `oldest_pending_age > 5 s` |
 
 ### 5.4 Monitoramento do SLA
 
 | Métrica | Como mede | Alerta |
 |---------|-----------|--------|
-| `read_model_lag_seconds` | `now() - occurredAt` do último evento projetado | p95 > 5 s por 2 min |
-| `outbox_oldest_pending_age_seconds` | Idade do evento PENDING mais antigo | > 5 s |
-| `projector_queue_depth` | Mensagens na fila | > 500 |
-| `dlq_depth` | Mensagens na DLQ | > 0 |
+| `projetor.atrasoMs` (p50, p95, p99, máx.) | projeção − `occurredAt`, últimos 1000 eventos da réplica | p95 > 5 s por 2 min |
+| `outbox.idadeMaisAntigoSegundos` | Idade do evento PENDING mais antigo | > 5 s |
+| `projetor.fila.aEspera` | Mensagens na fila (não entregues) | > 500 |
+| `projetor.fila.naDlq` | Mensagens na DLQ | > 0 |
+
+Todas em `GET /metricas` do Agendamento (só na rede interna). O relatório do gestor traz `defasagemSegundos`, o atraso do último evento projetado; ele não cresce sozinho se o projetor parar, e por isso a fila e o Outbox também são medidos.
+
+**Medido** com `scripts/verificar_cqrs.sh` (30 comandos com a stack no ar): em três execuções, p50 de 207 a 322 ms, p95 de 450 a 469 ms e máximo de 493 ms (máquina de desenvolvimento, novembro de 2026), contra o SLA de 5 s.
 
 ## 6. Consistência percebida pelo usuário
 
 | Situação | Comportamento |
 |----------|---------------|
-| Paciente reserva e abre "meus agendamentos" imediatamente | `POST` retorna o recurso; o BFF pode devolver **read-your-writes** usando o corpo do comando (ou aguardar `aggregateVersion` ≥ esperado por até 2 s) |
+| Paciente reserva e abre "meus agendamentos" imediatamente | Todo comando devolve o recurso e a sua `versao`. `GET /agendamentos/{id}?versaoMinima=N` espera até 2 s a projeção chegar a essa versão (**read-your-writes**); o `Location` do `POST` já vem com ela |
 | Slot aparece livre após ser reservado (janela ≤ 5 s) | Tentativa de reservar → `409`; UI recarrega — **seguro**, pois o Write Model decide |
 | Dashboard do gestor | Tolera 5 s (e até 5 min com cache do BFF) |
 
