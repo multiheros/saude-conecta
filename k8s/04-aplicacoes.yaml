@@ -85,6 +85,12 @@ spec:
               valueFrom: { secretKeyRef: { name: agendamento-db, key: DB_USER } }
             - name: DB_PASSWORD
               valueFrom: { secretKeyRef: { name: agendamento-db, key: DB_PASSWORD } }
+            - name: LEITURA_MONGO_USER
+              valueFrom: { secretKeyRef: { name: agendamento-leitura, key: LEITURA_MONGO_USER } }
+            - name: LEITURA_MONGO_PASSWORD
+              valueFrom: { secretKeyRef: { name: agendamento-leitura, key: LEITURA_MONGO_PASSWORD } }
+            - name: LEITURA_REDIS_PASSWORD
+              valueFrom: { secretKeyRef: { name: agendamento-leitura, key: LEITURA_REDIS_PASSWORD } }
             - name: RABBITMQ_USER
               valueFrom: { secretKeyRef: { name: rabbitmq, key: RABBITMQ_USER } }
             - name: RABBITMQ_PASSWORD

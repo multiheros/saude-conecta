@@ -76,9 +76,15 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER:-saude}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-troque-me-rabbit}
+      LEITURA_MONGO_HOST: db-agendamento-leitura
+      LEITURA_MONGO_USER: ${AGENDAMENTO_LEITURA_USER:-leitura}
+      LEITURA_MONGO_PASSWORD: ${AGENDAMENTO_LEITURA_PASSWORD:-troque-me-leitura}
+      LEITURA_REDIS_HOST: cache-agendamento
+      LEITURA_REDIS_PASSWORD: ${AGENDAMENTO_CACHE_PASSWORD:-troque-me-cache}
       SEED: "true" # dados ficticios de demonstracao
     networks: [backend, mensageria, data-agendamento]
-    # RabbitMQ nao e dependencia de partida: sem ele, os eventos esperam no Outbox.
+    # RabbitMQ e Read Model nao sao dependencia de partida: sem eles, os eventos esperam no Outbox ou na
+    # fila e os comandos continuam.
     depends_on: { db-agendamento: { condition: service_healthy } }
 
   triagem:
@@ -137,6 +143,33 @@ services:
       timeout: 3s
       retries: 10
 
+  # Read Model do Agendamento (CQRS): projecao duravel e cache de vagas. Ambos podem ser refeitos do PostgreSQL.
+  db-agendamento-leitura:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${AGENDAMENTO_LEITURA_USER:-leitura}
+      MONGO_INITDB_ROOT_PASSWORD: ${AGENDAMENTO_LEITURA_PASSWORD:-troque-me-leitura}
+    volumes: [agendamento-leitura-data:/data/db]
+    networks: [data-agendamento]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  cache-agendamento:
+    image: redis:7-alpine
+    environment:
+      REDISCLI_AUTH: ${AGENDAMENTO_CACHE_PASSWORD:-troque-me-cache}
+    # So cache: sem persistencia, com limite de memoria.
+    command: ["sh", "-c", "exec redis-server --save '' --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru --requirepass \"$$REDISCLI_AUTH\""]
+    networks: [data-agendamento]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   db-triagem:
     image: mongo:7
     environment:
@@ -183,7 +216,7 @@ services:
 #  - frontend : gateway <-> BFFs (unica com porta publicada, via gateway)
 #  - backend  : gateway/BFFs <-> servicos de dominio
 #  - mensageria: servicos de dominio <-> RabbitMQ (interna)
-#  - data-<x> : servico <x> <-> banco de <x>, uma rede por par. `internal: true`
+#  - data-<x> : servico <x> <-> banco(s) de <x>, uma rede por servico. `internal: true`
 #               => sem saida para fora e inalcancavel pelos demais servicos.
 networks:
   frontend:
@@ -202,6 +235,7 @@ networks:
 volumes:
   pacientes-data:
   agendamento-data:
+  agendamento-leitura-data:
   triagem-data:
   notificacoes-data:
   rabbitmq-data:
