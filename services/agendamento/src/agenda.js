@@ -44,7 +44,7 @@ const eventoSlot = (c, ctx, s, tipo, rota, agendamentoId) =>
 async function ocuparSlot(c, slotId) {
   const { rows: [s] } = await c.query(
     "UPDATE slots SET status='RESERVADO', version=version+1 WHERE id=$1 AND status='LIVRE' AND inicio > now() RETURNING *", [slotId]);
-  if (!s) throw new Problema(409, 'Slot indisponivel', 'O horario nao existe, ja passou ou acabou de ser ocupado.');
+  if (!s) throw new Problema(409, 'Slot indisponível', 'O horário não existe, já passou ou acabou de ser ocupado.');
   return s;
 }
 
@@ -61,7 +61,7 @@ async function buscar(c, id) {
 
 async function buscarComTrava(c, id) {
   const { rows: [a] } = await c.query(`${SELECT} WHERE a.id=$1 FOR UPDATE OF a`, [id]);
-  if (!a) throw new Problema(404, 'Agendamento nao encontrado');
+  if (!a) throw new Problema(404, 'Agendamento não encontrado');
   return a;
 }
 
@@ -71,7 +71,7 @@ async function mudarStatus(c, id, status, motivo = null) {
 }
 
 function exigir(a, acao) {
-  if (!ACOES[a.status].includes(acao)) throw new Problema(409, 'Transicao de estado invalida', `Nao e possivel ${acao} um agendamento ${a.status}.`);
+  if (!ACOES[a.status].includes(acao)) throw new Problema(409, 'Transição de estado inválida', `Não é possível ${acao} um agendamento ${a.status}.`);
 }
 
 // SAGA passo 3: transacao local do orquestrador. Idempotente por sagaId.
@@ -116,9 +116,9 @@ async function cancelar(c, ctx, id, motivo) {
 async function reagendar(c, ctx, id, novoSlotId) {
   const antes = await buscarComTrava(c, id);
   exigir(antes, 'reagendar');
-  if (novoSlotId === antes.slot_id) throw new Problema(409, 'Slot indisponivel', 'O novo horario e o mesmo do agendamento atual.');
+  if (novoSlotId === antes.slot_id) throw new Problema(409, 'Slot indisponível', 'O novo horário é o mesmo do agendamento atual.');
   const novo = await ocuparSlot(c, novoSlotId);
-  if (novo.especialidade !== antes.especialidade) throw new Problema(409, 'Especialidade diferente', 'O novo horario e de outra especialidade.');
+  if (novo.especialidade !== antes.especialidade) throw new Problema(409, 'Especialidade diferente', 'O novo horário é de outra especialidade.');
   await c.query("UPDATE agendamentos SET slot_id=$2, status='AGENDADO', version=version+1, atualizado_em=now() WHERE id=$1", [id, novoSlotId]);
   const a = await buscar(c, id);
   await eventoAgendamento(c, ctx, a, 'AgendamentoReagendado', 'reagendado', { slotAnteriorId: antes.slot_id });
@@ -130,7 +130,7 @@ async function reagendar(c, ctx, id, novoSlotId) {
 
 async function registrarComparecimento(c, ctx, id, compareceu) {
   const antes = await buscarComTrava(c, id);
-  if (!COMPARECIMENTO_DE.includes(antes.status)) throw new Problema(409, 'Transicao de estado invalida', `Agendamento ${antes.status}.`);
+  if (!COMPARECIMENTO_DE.includes(antes.status)) throw new Problema(409, 'Transição de estado inválida', `Agendamento ${antes.status}.`);
   const a = await mudarStatus(c, id, compareceu ? 'REALIZADO' : 'FALTOU');
   await eventoAgendamento(c, ctx, a, compareceu ? 'AtendimentoRealizado' : 'FaltaRegistrada', compareceu ? 'realizado' : 'faltou');
   return a;
@@ -140,7 +140,7 @@ async function registrarComparecimento(c, ctx, id, compareceu) {
 async function criarEscala(c, ctx, e) {
   const { rows: [prof] } = await c.query('SELECT * FROM profissionais WHERE id=$1', [e.profissionalId]);
   const { rows: [ubs] } = await c.query('SELECT * FROM ubs WHERE id=$1', [e.ubsId]);
-  if (!prof || !ubs) throw new Problema(422, 'Dados invalidos', 'Profissional ou UBS inexistente.');
+  if (!prof || !ubs) throw new Problema(422, 'Dados inválidos', 'Profissional ou UBS inexistente.');
   const { rows: slots } = await c.query(
     `WITH dias AS (
        SELECT d::date AS dia

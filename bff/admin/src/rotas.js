@@ -49,7 +49,7 @@ function criarRotas(env = process.env) {
 
   r.get('/agendamentos/resumo', rota(async (req, res) => {
     const { ubsId, periodo } = req.query;
-    if (!UUID.test(ubsId) || !/^\d{4}-(0[1-9]|1[0-2])$/.test(periodo)) throw new Problema(400, 'Parametros invalidos', 'ubsId e periodo (AAAA-MM) sao obrigatorios.');
+    if (!UUID.test(ubsId) || !/^\d{4}-(0[1-9]|1[0-2])$/.test(periodo)) throw new Problema(400, 'Parâmetros inválidos', 'ubsId e período (AAAA-MM) são obrigatórios.');
     const chave = `${ubsId.toLowerCase()}|${periodo}`, guardado = cache.get(chave);
     if (guardado && Date.now() - guardado.em < CACHE_MS) return res.set('X-Cache', 'HIT').json(guardado.valor);
     const valor = await resumo(req, ubsId.toLowerCase(), periodo);

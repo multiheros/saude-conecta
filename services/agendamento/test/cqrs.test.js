@@ -79,7 +79,7 @@ const apagarSabado = () => pool.query("DELETE FROM slots WHERE extract(isodow FR
 test('a escrita aparece na leitura com dados prontos para a tela', async () => {
   const [s] = await slots();
   const d = await agendado(s);
-  assert.equal(await a.consultas.obter(d.agendamentoId), null, 'a consulta nao le o PostgreSQL');
+  assert.equal(await a.consultas.obter(d.agendamentoId), null, 'a consulta não le o PostgreSQL');
   await a.projetar(pool);
   const v = await a.consultas.obter(d.agendamentoId);
   assert.deepEqual([v.status, v.versao, v.pacienteId, v.slot.id, v.ubs.nome, v.profissional.nome, v.urgencia], ['AGENDADO', 2, d.pacienteId, s, 'UBS Centro', 'Dra. Ana Souza', 'VERDE']);

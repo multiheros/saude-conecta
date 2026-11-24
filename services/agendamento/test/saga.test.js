@@ -35,7 +35,7 @@ async function participante(req, res) {
       if (alvo) alvo.delete(saga); else if (mundo.flags.get(u.pathname) === saga) mundo.flags.delete(u.pathname);
       return [204, null];
     }
-    if (mundo.encerradas.has(`${servico}:${saga}`)) return [409, { title: 'SAGA ja encerrada' }];
+    if (mundo.encerradas.has(`${servico}:${saga}`)) return [409, { title: 'SAGA já encerrada' }];
     if (servico === 'triagem') { alvo.add(saga); return [201, { id: 't', classificacao: mundo.classificacao }]; }
     if (servico === 'notificacoes') { alvo.add(saga); return [201, [{}, {}, {}]]; }
     if (mundo.flags.has(u.pathname) && mundo.flags.get(u.pathname) !== saga) return [409, { title: 'Agendamento em andamento' }];
@@ -206,7 +206,7 @@ test('compensacao que falha nao impede as outras e e repetida ate dar certo', as
   await ate(a.id, 'FALHOU');
   await limpo(s, a.id);
   const h = await historico(g.id);
-  assert.equal(h.filter((x) => x === 'C 2-pacientes PENDENTE').length, 1, 'repeticoes nao enchem o log');
+  assert.equal(h.filter((x) => x === 'C 2-pacientes PENDENTE').length, 1, 'repeticoes não enchem o log');
   assert.equal(h.filter((x) => x === 'C 2-pacientes OK').length, 1);
 });
 
@@ -237,10 +237,10 @@ test('replica morre no meio: outra retoma do passo em que parou', async () => {
   for (let i = 0; i < 100 && n === 0; i++) await dormir(10);
   const viva = orq();
   const g = await ate(a.id, 'CONCLUIDA');
-  assert.equal(chamadas('POST triagem').length, 1, 'passo ja concluido nao se repete');
+  assert.equal(chamadas('POST triagem').length, 1, 'passo já concluido não se repete');
   soltar(); // a replica "morta" acorda e tenta continuar
   await dormir(300);
-  assert.equal(chamadas('POST notificacoes').length, 1, 'quem perdeu o lease nao prossegue');
+  assert.equal(chamadas('POST notificacoes').length, 1, 'quem perdeu o lease não prossegue');
   assert.deepEqual(await historico(g.id), ['A 1-triagem OK', 'A 2-pacientes OK', 'A 3-reserva OK', 'A 4-notificacoes OK']);
   assert.equal((await viva.agendamento(a.id)).status, 'AGENDADO');
 });

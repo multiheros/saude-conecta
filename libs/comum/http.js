@@ -6,19 +6,19 @@ const { Problema } = require('./erros');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const inteiro = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
-const invalido = (detalhe) => new Problema(422, 'Dados invalidos', detalhe);
+const invalido = (detalhe) => new Problema(422, 'Dados inválidos', detalhe);
 const rota = (fn) => (req, res, next) => fn(req, res).catch(next);
 
 // Identidade injetada pelo gateway. O perfil 'servico' so existe na rede interna:
 // o gateway descarta X-User-* vindos de fora.
 function exigirPerfil(req, ...perfis) {
-  if (!perfis.includes(req.get('X-User-Role'))) throw new Problema(403, 'Sem permissao', `Perfil exigido: ${perfis.join(' ou ')}.`);
+  if (!perfis.includes(req.get('X-User-Role'))) throw new Problema(403, 'Sem permissão', `Perfil exigido: ${perfis.join(' ou ')}.`);
 }
 function exigirDono(req, pacienteId) {
   const perfil = req.get('X-User-Role');
   if (perfil === 'gestor' || perfil === 'servico') return;
   if (perfil === 'paciente' && pacienteId && req.get('X-User-Id') === pacienteId) return;
-  throw new Problema(403, 'Sem permissao');
+  throw new Problema(403, 'Sem permissão');
 }
 
 // `pronto` devolve um objeto { dependencia: 'up'|'down' }; `essencial` e a que define 200/503.
@@ -50,13 +50,13 @@ function criarApp({ nome, rotas, pronto, essencial = 'db', metricas, prefixo = '
   if (metricas) app.get('/metricas', rota(async (_req, res) => res.json(await metricas())));
 
   app.use(prefixo, rotas);
-  app.use((_req, _res, next) => next(new Problema(404, 'Recurso nao encontrado')));
+  app.use((_req, _res, next) => next(new Problema(404, 'Recurso não encontrado')));
   app.use((e, req, res, _next) => {
     const jsonInvalido = e.type === 'entity.parse.failed';
     const status = e instanceof Problema ? e.status : jsonInvalido ? 400 : 500;
     if (status === 500) console.error(JSON.stringify({ nivel: 'erro', servico: nome, correlationId: req.correlationId, erro: e.stack }));
     res.status(status).type('application/problem+json').json({
-      type: 'about:blank', title: e instanceof Problema ? e.title : jsonInvalido ? 'JSON invalido' : 'Erro interno',
+      type: 'about:blank', title: e instanceof Problema ? e.title : jsonInvalido ? 'JSON inválido' : 'Erro interno',
       status, detail: e instanceof Problema ? e.detail : undefined, correlationId: req.correlationId,
     });
   });

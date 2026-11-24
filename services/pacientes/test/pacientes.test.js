@@ -128,7 +128,7 @@ test('SAGA passo 2: idempotente, exclusivo por paciente, e compensa so o proprio
   assert.equal((await validar(P1, a)).status, 200);
   assert.equal((await validar(P1, b)).status, 409);
   assert.equal((await reverter(P1, b)).status, 204);
-  assert.equal(await flag(P1), a, 'outra SAGA nao pode limpar a flag');
+  assert.equal(await flag(P1), a, 'outra SAGA não pode limpar a flag');
   assert.equal((await reverter(P1, a)).status, 204);
   assert.equal((await reverter(P1, a)).status, 204);
   assert.equal(await flag(P1), null);
@@ -176,7 +176,7 @@ test('umaVez: efeito unico por evento, e falha permite nova tentativa', async ()
   assert.equal(await umaVez(pool, 'outro', id, async () => { n++; }), true);
 });
 
-test('mensagem defeituosa vai para a DLQ e nao trava a fila', async () => {
+test('mensagem defeituosa vai para a DLQ e não trava a fila', async () => {
   const a = randomUUID();
   await validar(P1, a);
   canal.publish('saudeconecta.events', 'agendamento.agendamento.criado', Buffer.from('nao e json'));

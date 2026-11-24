@@ -10,25 +10,25 @@ NIVEIS = ["VERMELHO", "LARANJA", "AMARELO", "VERDE", "AZUL"]
 
 # (nivel, padrao, motivo). Texto ja normalizado: minusculas e sem acentos.
 SINAIS = [
-    ("VERMELHO", r"(nao consig\w+|dificuldade para|sem conseguir) respirar", "dificuldade respiratoria grave"),
+    ("VERMELHO", r"(nao consig\w+|dificuldade para|sem conseguir) respirar", "dificuldade respiratória grave"),
     ("VERMELHO", r"falta de ar (intensa|forte|muito forte|grave)", "falta de ar intensa"),
-    ("VERMELHO", r"inconsciente|desacordad\w|desmai\w+ e nao acord\w+", "perda de consciencia"),
-    ("VERMELHO", r"convuls\w+|convulsionand\w", "convulsao"),
+    ("VERMELHO", r"inconsciente|desacordad\w|desmai\w+ e nao acord\w+", "perda de consciência"),
+    ("VERMELHO", r"convuls\w+|convulsionand\w", "convulsão"),
     ("VERMELHO", r"hemorragia|sangramento (intenso|que nao para)|sangrando muito", "sangramento intenso"),
     ("VERMELHO", r"boca torta|fala (enrolada|arrastada)|fraqueza (de|em) um lado|rosto torto", "sinais de AVC"),
-    ("VERMELHO", r"(quero|penso em|pensando em|vontade de) (me matar|morrer|tirar minha vida)|suicid\w+", "risco de suicidio"),
-    ("LARANJA", r"dor (forte )?no peito|aperto no peito|dor toracica", "dor toracica"),
+    ("VERMELHO", r"(quero|penso em|pensando em|vontade de) (me matar|morrer|tirar minha vida)|suicid\w+", "risco de suicídio"),
+    ("LARANJA", r"dor (forte )?no peito|aperto no peito|dor toracica", "dor no peito"),
     ("LARANJA", r"falta de ar", "falta de ar"),
     ("LARANJA", r"vomit\w+ (com )?sangue|sangue nas fezes|fezes pretas", "sangramento digestivo"),
-    ("LARANJA", r"gravid\w+.*sangra\w+|sangra\w+.*gravid\w+", "sangramento na gestacao"),
+    ("LARANJA", r"gravid\w+.*sangra\w+|sangra\w+.*gravid\w+", "sangramento na gestação"),
     ("LARANJA", r"rigidez (na|de) nuca|pescoco duro", "rigidez de nuca"),
-    ("LARANJA", r"confus\w+ mental|desorientad\w", "confusao mental"),
+    ("LARANJA", r"confus\w+ mental|desorientad\w", "confusão mental"),
     ("AMARELO", r"febre (alta|de 39|de 40|ha (3|4|5|varios) dias|ha tres dias)", "febre alta ou persistente"),
     ("AMARELO", r"dor (muito )?(forte|intensa|insuportavel)", "dor intensa"),
-    ("AMARELO", r"vomitando|vomitos? (persistentes?|ha|repetidos?)|desidratad\w|boca seca", "risco de desidratacao"),
-    ("AMARELO", r"queimadura|ferida (aberta|infeccionada)|pressao (muito )?alta", "lesao ou alteracao a avaliar"),
+    ("AMARELO", r"vomitando|vomitos? (persistentes?|ha|repetidos?)|desidratad\w|boca seca", "risco de desidratação"),
+    ("AMARELO", r"queimadura|ferida (aberta|infeccionada)|pressao (muito )?alta", "lesão ou alteração a avaliar"),
     ("AZUL", r"renova\w+ (de |da |a |minha )*receita|check.?up|rotina|exame de rotina|atestado|preventivo|resultado de exame", "demanda administrativa ou preventiva"),
-    ("VERDE", r"tosse|coriza|nariz (entupido|escorrendo)|resfriado|gripe|dor de garganta|garganta", "sintoma respiratorio leve"),
+    ("VERDE", r"tosse|coriza|nariz (entupido|escorrendo)|resfriado|gripe|dor de garganta|garganta", "sintoma respiratório leve"),
     ("VERDE", r"dor (nas costas|lombar|de cabeca|muscular|no joelho|de ouvido|na barriga)|diarreia|coceira|mancha|alergia|azia|febre", "queixa sem sinal de alarme"),
 ]
 _SINAIS = [(n, re.compile(p), m) for n, p, m in SINAIS]
@@ -44,7 +44,7 @@ def normalizar(texto: str) -> str:
 
 
 def sinais(sintomas: str, idade: int | None = None) -> list[tuple[str, str]]:
-    """(nivel, motivo) de cada sinal reconhecido e nao negado."""
+    """(nivel, motivo) de cada sinal reconhecido e não negado."""
     texto = normalizar(sintomas)
     achados = []
     for nivel, padrao, motivo in _SINAIS:
@@ -63,9 +63,9 @@ def classificar(sintomas: str, idade: int | None = None) -> dict:
     achados = sinais(sintomas, idade)
     if achados:
         nivel, motivo = min(achados, key=lambda a: NIVEIS.index(a[0]))
-        justificativa = f"Regra: {motivo}."
+        justificativa = f"Pelas regras de triagem: {motivo}."
     else:
-        nivel, justificativa = "AMARELO", "Regra: queixa nao reconhecida; nivel conservador."
+        nivel, justificativa = "AMARELO", "Pelas regras de triagem: queixa não reconhecida, então foi usado um nível de cautela."
     return {"classificacao": nivel, "justificativa": justificativa, "especialidadeSugerida": especialidade(normalizar(sintomas), idade)}
 
 

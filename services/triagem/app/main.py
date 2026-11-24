@@ -86,29 +86,29 @@ async def erro_http(request, e):
 async def erro_validacao(request, e):
     campos = ", ".join(".".join(str(p) for p in x["loc"][1:]) for x in e.errors())
     local = {x["loc"][0] for x in e.errors()}
-    return problema(request, 422 if "body" in local else 400, "Dados invalidos", campos)
+    return problema(request, 422 if "body" in local else 400, "Dados inválidos", campos)
 
 
 @app.exception_handler(PyMongoError)
 async def erro_banco(request, _e):
-    return problema(request, 503, "Banco indisponivel")
+    return problema(request, 503, "Banco indisponível")
 
 
 # Identidade injetada pelo gateway; o perfil 'servico' so existe na rede interna.
 def exigir_servico(x_user_role: str | None = Header(None)):
     if x_user_role != "servico":
-        raise HTTPException(403, "Sem permissao")
+        raise HTTPException(403, "Sem permissão")
 
 
 def exigir_dono(triagem: dict, perfil, usuario):
     if perfil in ("gestor", "servico") or (perfil == "paciente" and usuario == triagem["pacienteId"]):
         return
-    raise HTTPException(403, "Sem permissao")
+    raise HTTPException(403, "Sem permissão")
 
 
 def uuid_valido(v: str) -> str:
     if not UUID.match(v):
-        raise HTTPException(400, "Identificador invalido")
+        raise HTTPException(400, "Identificador inválido")
     return v.lower()
 
 
@@ -156,7 +156,7 @@ def criar(body: TriagemIn, x_saga_id: str = Header()):
     try:
         return representar(repo.criar(existente))
     except SagaEncerrada:
-        raise HTTPException(409, "SAGA ja encerrada") from None
+        raise HTTPException(409, "SAGA já encerrada") from None
 
 
 @app.delete("/api/v1/triagens", status_code=204, dependencies=[Depends(exigir_servico)])
@@ -175,7 +175,7 @@ class RecomendacaoIn(BaseModel):
 @app.post("/api/v1/triagens/recomendacoes")
 def recomendar(body: RecomendacaoIn, request: Request, x_user_role: str | None = Header(None)):
     if x_user_role not in ("paciente", "gestor", "servico"):
-        raise HTTPException(403, "Sem permissao")
+        raise HTTPException(403, "Sem permissão")
     return triador.recomendar(body.sintomas, body.idade, str(body.ubsId), request.state.correlation_id)
 
 
@@ -183,14 +183,14 @@ def recomendar(body: RecomendacaoIn, request: Request, x_user_role: str | None =
 @app.get("/api/v1/triagens/saude-llm")
 def saude_llm(x_user_role: str | None = Header(None)):
     if x_user_role not in ("gestor", "servico"):
-        raise HTTPException(403, "Sem permissao")
+        raise HTTPException(403, "Sem permissão")
     return triador.indicadores() | {"instance": socket.gethostname()}
 
 
 def buscar_triagem(triagem_id: str, x_user_role: str | None = Header(None), x_user_id: str | None = Header(None)) -> dict:
     t = repo.buscar(triagem_id)
     if t is None:
-        raise HTTPException(404, "Triagem nao encontrada")
+        raise HTTPException(404, "Triagem não encontrada")
     exigir_dono(t, x_user_role, x_user_id)
     return t
 
@@ -200,7 +200,7 @@ def buscar_triagem(triagem_id: str, x_user_role: str | None = Header(None), x_us
 def da_saga(sagaId: str = Query(), x_user_role: str | None = Header(None), x_user_id: str | None = Header(None)):
     t = repo.da_saga(uuid_valido(sagaId))
     if t is None:
-        raise HTTPException(404, "Triagem nao encontrada")
+        raise HTTPException(404, "Triagem não encontrada")
     exigir_dono(t, x_user_role, x_user_id)
     return representar(t)
 
@@ -219,7 +219,7 @@ def orientacoes(t: dict = Depends(buscar_triagem)):
 @app.post("/api/v1/triagens/{triagem_id}/feedback", status_code=204)
 def feedback(triagem_id: str, body: FeedbackIn, x_user_role: str | None = Header(None)):
     if x_user_role != "gestor":
-        raise HTTPException(403, "Sem permissao")
+        raise HTTPException(403, "Sem permissão")
     if not repo.registrar_feedback(triagem_id, body.classificacaoMedico):
-        raise HTTPException(404, "Triagem nao encontrada")
+        raise HTTPException(404, "Triagem não encontrada")
     return Response(status_code=204)

@@ -8,7 +8,7 @@ const percentual = (parte, todo) => (todo ? Math.round((1000 * parte) / todo) / 
 
 function criarConsultas({ leitura, esperaMs = ESPERA_MS }) {
   const { agendamentos, ocupacao, controle, cache } = leitura;
-  const fora = () => new Problema(503, 'Consulta indisponivel', 'O modelo de leitura esta fora do ar. Agendamentos continuam sendo aceitos.');
+  const fora = () => new Problema(503, 'Consulta indisponível', 'O modelo de leitura está fora do ar. Agendamentos continuam sendo aceitos.');
   const protegida = (fn) => async (...args) => {
     if (!leitura.conectado()) throw fora();
     try { return await fn(...args); } catch (e) {

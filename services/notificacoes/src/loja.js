@@ -171,7 +171,7 @@ function criarLoja(env = process.env) {
         const pct = Math.round((1000 * ocu) / cap) / 10;
         if (pct < LIMITE_GARGALO) continue;
         const [ubsId, especialidade, dia] = g.split('|');
-        r.push({ id: g, tipo: 'GARGALO', ubsId, especialidade, dia, ocupacaoPercentual: pct, mensagem: `${especialidade} com ${pct}% dos horários ocupados em ${dia.split('-').reverse().join('/')}` });
+        r.push({ id: g, tipo: 'GARGALO', ubsId, especialidade, dia, ocupacaoPercentual: pct, mensagem: `${especialidade} com ${String(pct).replace('.', ',')}% dos horários ocupados em ${dia.split('-').reverse().join('/')}` });
       }
       return r.sort((a, b) => a.dia.localeCompare(b.dia) || b.ocupacaoPercentual - a.ocupacaoPercentual);
     },

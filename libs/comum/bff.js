@@ -5,7 +5,7 @@ const { UUID } = require('./http');
 
 // Barreira propria do BFF, alem da do gateway.
 function exigir(perfil) {
-  return (req, _res, next) => next(req.get('X-User-Role') === perfil && UUID.test(req.get('X-User-Id')) ? undefined : new Problema(403, 'Sem permissao'));
+  return (req, _res, next) => next(req.get('X-User-Role') === perfil && UUID.test(req.get('X-User-Id')) ? undefined : new Problema(403, 'Sem permissão'));
 }
 
 // Repassa a identidade e a correlacao. Recusa do dominio (4xx) volta igual; falha vira 503 ou 504.
@@ -16,7 +16,7 @@ async function pedir(req, metodo, url, { corpo, headers, timeoutMs = 3000 } = {}
   } catch (e) {
     if (!e.remota) throw e;
     console.error(JSON.stringify({ nivel: 'erro', msg: 'dominio indisponivel', correlationId: req.correlationId, url: url.split('?')[0], erro: e.message }));
-    throw /^sem resposta/.test(e.message) ? new Problema(504, 'Servico nao respondeu a tempo') : new Problema(503, 'Servico indisponivel');
+    throw /^sem resposta/.test(e.message) ? new Problema(504, 'Serviço não respondeu a tempo') : new Problema(503, 'Serviço indisponível');
   }
   if (r.status >= 400) throw new Problema(r.status, (r.corpo && r.corpo.title) || 'Pedido recusado', r.corpo && r.corpo.detail);
   return r.corpo;

@@ -87,7 +87,7 @@ test('cache curto por unidade e periodo; criar escala limpa', async () => {
 test('so gestor; parametros conferidos; recusa do dominio repassada', async () => {
   for (const h of [{}, { ...ID, 'X-User-Role': 'paciente' }, { 'X-User-Role': 'gestor' }]) assert.equal((await c.pedir('GET', RESUMO, undefined, h)).status, 403);
   for (const q of ['', '?ubsId=x&periodo=2026-11', `?ubsId=${UBS}&periodo=2026-13`]) assert.equal((await c.pedir('GET', `/agendamentos/resumo${q}`)).status, 400);
-  d.respostas['POST /api/v1/escalas'] = [422, { title: 'Dados invalidos', detail: 'diaSemana' }];
+  d.respostas['POST /api/v1/escalas'] = [422, { title: 'Dados inválidos', detail: 'diaSemana' }];
   const r = await c.pedir('POST', '/escalas', {});
   assert.deepEqual([r.status, r.corpo.detail], [422, 'diaSemana']);
 });

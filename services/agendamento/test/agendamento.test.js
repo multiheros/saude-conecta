@@ -134,7 +134,7 @@ test('reagendar troca os horarios numa transacao', async () => {
   const url = `/agendamentos/${d.agendamentoId}/reagendamento`;
   assert.equal((await chamar('POST', url, { corpo: { novoSlotId: s3 } })).status, 409);
   assert.equal((await chamar('POST', url, { corpo: { novoSlotId: ped } })).status, 409);
-  assert.equal(await statusSlot(ped), 'LIVRE', 'especialidade errada nao pode deixar horario preso');
+  assert.equal(await statusSlot(ped), 'LIVRE', 'especialidade errada não pode deixar horário preso');
   assert.equal((await chamar('POST', url, { corpo: { novoSlotId: s1 } })).status, 409);
   assert.equal((await chamar('POST', url, { corpo: {} })).status, 422);
   const r = await chamar('POST', url, { corpo: { novoSlotId: s2 } });
