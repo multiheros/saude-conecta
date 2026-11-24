@@ -18,11 +18,11 @@ Como o sistema roda em containers (Docker Compose) e no cluster (Kubernetes), e 
 - Todas rodam como **usuário não-root** e têm `HEALTHCHECK` apontando para `/ready`.
 - O gateway tem estágio único porque só copia arquivos de configuração: não há etapa de build para separar.
 
-Cada serviço tem `.dockerignore` para não enviar `node_modules` nem arquivos desnecessários ao contexto de build.
+Pacientes, Agendamento e Notificações compartilham `libs/comum` (banco, Outbox, broker, consumidor e base HTTP). Por isso o contexto de build deles é a raiz, e o `.dockerignore` da raiz é uma **lista do que entra** (`libs` e `services`). É código compartilhado em tempo de build: cada imagem leva a sua cópia, sem dependência em execução.
 
 ## 2. Docker Compose
 
-`docker-compose.yml` sobe 12 containers com um comando: gateway, 2 BFFs, 4 serviços de domínio, 4 bancos e RabbitMQ.
+`docker-compose.yml` sobe 12 containers com um comando: gateway, 2 BFFs, 4 serviços de domínio, 4 bancos e RabbitMQ. Um 13º, `chaves`, roda uma vez e termina: gera o par RSA do JWT. A chave privada fica num volume montado só em Pacientes; nada é versionado.
 
 **Database per Service, instâncias separadas:**
 
@@ -65,6 +65,7 @@ Credenciais vêm de variáveis de ambiente com valores padrão de desenvolviment
 | `05-rabbitmq.yaml` | StatefulSet + PVC + Service |
 | `06-ingress.yaml` | Ingress: `/web/v1` e `/admin/v1` (com remoção do prefixo), `/api/v1/*` e a rota de preferências de notificação |
 | `07-networkpolicy.yaml` | Cada banco só aceita conexão do seu serviço |
+| `scripts/k8s-chaves.sh` | Cria o Secret `jwt-privada` e o ConfigMap `jwt-publica` no cluster |
 | `cluster/kind-config.yaml` | Cluster local; Ingress exposto em `localhost:8081` |
 
 - **Deployments** para serviços stateless (escalam livremente); **StatefulSets** para bancos e RabbitMQ (identidade e volume estáveis).
@@ -88,11 +89,12 @@ A resposta inclui `atendidoPor` (nome do pod), então a distribuição das requi
 
 | Comando | O que prova |
 |---------|-------------|
-| `docker compose -f docker-compose.test.yml run --build --rm agendamento` | Reserva concorrente, compensação, HATEOAS, permissões e Outbox, contra um PostgreSQL descartável |
+| `scripts/testar.sh` | Testes de integração de Agendamento, Pacientes e Notificações contra PostgreSQL, Redis e RabbitMQ descartáveis: concorrência, compensação, eventos repetidos ou fora de ordem, permissões, DLQ e Outbox |
 | `scripts/verificar_outbox.sh` | Nenhum evento se perde com RabbitMQ parado, `kill -9` ou reinício do broker |
 | `scripts/verificar_isolamento.sh` | Isolamento de rede e senha dos bancos (com a stack no ar) |
 
 ## 5. Limitações desta etapa
-- **Agendamento** já usa PostgreSQL, Outbox e RabbitMQ; suas consultas ainda leem o banco de escrita (o Read Model vem na etapa de CQRS). Os demais serviços seguem com dados fixos.
+- **Agendamento**, **Pacientes** e **Notificações** já usam o próprio banco e RabbitMQ. As consultas do Agendamento ainda leem o banco de escrita (o Read Model vem na etapa de CQRS). A **Triagem** segue com dados fixos.
+- O gateway ainda não valida o JWT, e os BFFs usam uma identidade fixa de demonstração.
 - O ChromaDB (base vetorial da Triagem) ainda não está na stack; entra junto com o RAG.
 - O gateway do Compose é NGINX; no Kubernetes o papel é do Ingress. Autenticação JWT e rate limiting do Kong estão documentados em [`gateway-routing.md`](gateway-routing.md) e ficam para a Parte 4.

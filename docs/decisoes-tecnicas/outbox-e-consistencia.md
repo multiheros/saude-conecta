@@ -187,13 +187,18 @@ Como a entrega pode duplicar, cada consumidor mantém:
 
 ```sql
 CREATE TABLE processed_events (
-    event_id     UUID PRIMARY KEY,
     consumer     VARCHAR(64) NOT NULL,
-    processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    event_id     UUID        NOT NULL,
+    processed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (consumer, event_id)
 );
 ```
 
 Fluxo: `INSERT ... ON CONFLICT DO NOTHING` na **mesma transação** que aplica o efeito; se o insert não inseriu nada → duplicado, descartar (`ack`).
+
+Em **Notificações** (Redis) não há essa tabela: cada evento só se aplica se `aggregateVersion` for maior que a versão já vista, o que cobre repetição **e** desordem.
+
+**Falha no consumo** (`libs/comum/consumidor.js`): até 3 tentativas e depois DLQ; se a causa for transitória (banco fora), insiste sem limite, sem descartar a mensagem.
 
 ### 3.4 Observabilidade
 

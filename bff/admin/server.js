@@ -16,11 +16,11 @@ app.get(['/live', '/ready'], (_req, res) => res.json({ service: 'bff-admin', sta
 app.get('/painel', async (_req, res) => {
   try {
     const [est, ocup, alertas] = await Promise.all([
-      fetch(`${PACIENTES}/api/v1/pacientes/estatisticas`).then((r) => r.json()),
+      fetch(`${PACIENTES}/api/v1/pacientes/estatisticas?ubsId=${UBS_PADRAO}`, { headers: { 'X-User-Role': 'gestor' } }).then((r) => r.json()),
       fetch(`${AGENDAMENTO}/api/v1/relatorios/ocupacao?ubsId=${UBS_PADRAO}&periodo=${new Date().toISOString().slice(0, 7)}`, { headers: { 'X-User-Role': 'gestor' } }).then((r) => r.json()),
-      fetch(`${NOTIFICACOES}/api/v1/notificacoes/alertas`).then((r) => r.json()),
+      fetch(`${NOTIFICACOES}/api/v1/notificacoes/alertas`, { headers: { 'X-User-Role': 'gestor' } }).then((r) => r.json()),
     ]);
-    res.json({ cliente: 'admin', pacientes: est, ocupacao: ocup, alertas: alertas.data, atendidoPor: os.hostname() });
+    res.json({ cliente: 'admin', pacientes: est, ocupacao: ocup, alertas, atendidoPor: os.hostname() });
   } catch (e) {
     res.status(502).json({ title: 'Servico indisponivel', status: 502 });
   }

@@ -16,6 +16,9 @@ paths:
     post:
       tags: [Notificações]
       summary: (SAGA passo 4) Agenda confirmação + lembretes
+      description: |
+        Perfil interno `servico`; idempotente por SAGA. Nada é enviado antes do evento `AgendamentoCriado`.
+        Lembrete cujo horário já passou não é criado. Envio simulado (registrado em log).
       parameters:
         - { name: X-Saga-Id, in: header, required: true, description: SAGA que criou as notificações, schema: { type: string, format: uuid } }
         - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
@@ -32,6 +35,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Notificacao' }
+        '409': { description: SAGA já encerrada (pedido atrasado) }
         '422': { description: Dados inválidos }
     delete:
       tags: [Notificações]
@@ -71,7 +75,7 @@ paths:
   /notificacoes/alertas:
     get:
       tags: [Notificações]
-      summary: Alertas de gargalo para gestores
+      summary: Alertas de gargalo para gestores (≥ 85% dos horários do dia ocupados)
       responses:
         '200':
           description: Alertas ativos
@@ -140,17 +144,18 @@ components:
       type: object
       properties:
         id: { type: string }
+        tipo: { type: string, enum: [GARGALO] }
         ubsId: { type: string, format: uuid }
         especialidade: { type: string }
+        dia: { type: string, format: date }
         ocupacaoPercentual: { type: number }
         mensagem: { type: string }
-        criadoEm: { type: string, format: date-time }
     Preferencias:
       type: object
       properties:
         canais:
           type: array
           items: { $ref: '#/components/schemas/Canal' }
-        antecedenciaLembreteHoras: { type: integer, example: 24 }
+        antecedenciaLembreteHoras: { type: integer, minimum: 3, maximum: 168, default: 24 }
 security:
   - bearerAuth: []

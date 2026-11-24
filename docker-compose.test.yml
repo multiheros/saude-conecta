@@ -1,13 +1,31 @@
 # Testes de integracao em ambiente descartavel (nao usa os volumes da stack).
-# Uso: docker compose -f docker-compose.test.yml run --build --rm agendamento
+# Um servico: docker compose -f docker-compose.test.yml run --build --rm pacientes
+# Todos:      scripts/testar.sh
 name: saudeconecta-testes
 services:
   agendamento:
-    build: { context: ./services/agendamento, target: teste }
-    environment: { DB_HOST: pg-agendamento, DB_USER: teste, DB_PASSWORD: teste, DB_NAME: agendamento }
+    build: { context: ., dockerfile: services/agendamento/Dockerfile, target: teste }
+    environment: { DB_HOST: pg-agendamento, DB_USER: teste, DB_PASSWORD: teste, DB_NAME: teste }
     depends_on: { pg-agendamento: { condition: service_healthy } }
-  pg-agendamento:
+  pacientes:
+    build: { context: ., dockerfile: services/pacientes/Dockerfile, target: teste }
+    environment: { DB_HOST: pg-pacientes, DB_USER: teste, DB_PASSWORD: teste, DB_NAME: teste, RABBITMQ_HOST: rabbitmq, RABBITMQ_USER: teste, RABBITMQ_PASSWORD: teste }
+    depends_on: { pg-pacientes: { condition: service_healthy }, rabbitmq: { condition: service_healthy } }
+  notificacoes:
+    build: { context: ., dockerfile: services/notificacoes/Dockerfile, target: teste }
+    environment: { DB_HOST: redis }
+    depends_on: { redis: { condition: service_healthy } }
+
+  pg-agendamento: &pg
     image: postgres:16-alpine
-    environment: { POSTGRES_USER: teste, POSTGRES_PASSWORD: teste, POSTGRES_DB: agendamento }
+    environment: { POSTGRES_USER: teste, POSTGRES_PASSWORD: teste, POSTGRES_DB: teste }
     tmpfs: [/var/lib/postgresql/data]
-    healthcheck: { test: ["CMD-SHELL", "pg_isready -U teste -d agendamento"], interval: 2s, retries: 20 }
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U teste -d teste"], interval: 2s, retries: 20 }
+  pg-pacientes: *pg
+  redis:
+    image: redis:7-alpine
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 2s, retries: 20 }
+  rabbitmq:
+    build: ./infra/rabbitmq
+    environment: { RABBITMQ_USER: teste, RABBITMQ_PASSWORD: teste }
+    healthcheck: { test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"], interval: 4s, timeout: 8s, retries: 20, start_period: 8s }

@@ -15,6 +15,8 @@ spec:
   template:
     metadata: { labels: { app: pacientes, camada: dominio } }
     spec:
+      securityContext: { fsGroup: 1000 }
+      volumes: [{ name: jwt, secret: { secretName: jwt-privada, defaultMode: 0440 } }] # scripts/k8s-chaves.sh
       enableServiceLinks: false # evita variaveis como RABBITMQ_PORT=tcp://...
       containers:
         - name: pacientes
@@ -27,6 +29,18 @@ spec:
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: PACIENTES_DB_HOST } }
             - name: DB_PORT
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: PACIENTES_DB_PORT } }
+            - { name: DB_NAME, value: pacientes }
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: pacientes-db, key: DB_USER } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: pacientes-db, key: DB_PASSWORD } }
+            - name: RABBITMQ_USER
+              valueFrom: { secretKeyRef: { name: rabbitmq, key: RABBITMQ_USER } }
+            - name: RABBITMQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: rabbitmq, key: RABBITMQ_PASSWORD } }
+            - { name: JWT_CHAVE_PRIVADA, value: /chaves/jwt.pem }
+            - { name: SEED, value: "true" } # dados ficticios de demonstracao
+          volumeMounts: [{ name: jwt, mountPath: /chaves, readOnly: true }]
           readinessProbe:
             httpGet: { path: /ready, port: 8001 }
             periodSeconds: 5
@@ -154,6 +168,12 @@ spec:
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: NOTIFICACOES_DB_HOST } }
             - name: DB_PORT
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: NOTIFICACOES_DB_PORT } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: notificacoes-db, key: DB_PASSWORD } }
+            - name: RABBITMQ_USER
+              valueFrom: { secretKeyRef: { name: rabbitmq, key: RABBITMQ_USER } }
+            - name: RABBITMQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: rabbitmq, key: RABBITMQ_PASSWORD } }
           readinessProbe:
             httpGet: { path: /ready, port: 8004 }
             periodSeconds: 5

@@ -224,7 +224,7 @@ Demonstração do sistema sendo levantado com Docker Compose e Kubernetes (Docke
 
 **[▶️ Assistir no YouTube](https://youtu.be/KnB0XyP8xoM)**
 
-> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A Parte 4, em andamento, substitui esses dados pela lógica real, começando por **Agendamento** (PostgreSQL, Outbox e RabbitMQ).
+> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A Parte 4, em andamento, substitui esses dados pela lógica real, e já cobre **Agendamento**, **Pacientes** e **Notificações** (banco próprio, eventos e JWT).
 
 **Requisitos:** Docker 24+ com Compose v2. Para Kubernetes: `kubectl` e [`kind`](https://kind.sigs.k8s.io).
 
@@ -239,7 +239,8 @@ Entrada única pelo gateway: `http://localhost:8080`
 ```bash
 curl http://localhost:8080/web/v1/home       # BFF do paciente (dados simples)
 curl http://localhost:8080/admin/v1/painel   # BFF do gestor (dados agregados)
-curl http://localhost:8080/api/v1/pacientes/1  # recurso com HATEOAS (_links)
+curl -X POST http://localhost:8080/api/v1/auth/login -H 'content-type: application/json' \
+     -d '{"cpf":"10000000108","senha":"demo12345"}'   # paciente fictício (gestora: 90000000175)
 ```
 
 ```bash
@@ -254,7 +255,8 @@ docker compose down -v     # para e apaga os volumes
 kind create cluster --config k8s/cluster/kind-config.yaml
 
 # 2. imagens (build local e carga no cluster)
-for s in pacientes agendamento triagem notificacoes; do docker build -t saudeconecta/$s:1.0 services/$s; done
+for s in pacientes agendamento notificacoes; do docker build -t saudeconecta/$s:1.0 -f services/$s/Dockerfile .; done
+docker build -t saudeconecta/triagem:1.0 services/triagem
 docker build -t saudeconecta/bff-web:1.0 bff/web
 docker build -t saudeconecta/bff-admin:1.0 bff/admin
 docker build -t saudeconecta/rabbitmq:1.0 infra/rabbitmq
@@ -266,6 +268,7 @@ kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/com
 
 # 4. aplicação
 kubectl apply -f k8s/00-namespace.yaml
+scripts/k8s-chaves.sh            # par de chaves do JWT, gerado na hora
 kubectl apply -f k8s/
 kubectl -n saudeconecta get pods
 

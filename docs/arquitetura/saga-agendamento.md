@@ -61,7 +61,7 @@ sequenceDiagram
     O-->>P: Consulta agendada com sucesso
 ```
 
-Ao concluir, o orquestrador grava `AGENDADO` e o evento `AgendamentoCriado` (Outbox) na mesma transação. Esse evento fecha os estados temporários: **Pacientes** limpa a flag "em andamento" e **Triagem** torna a classificação definitiva.
+Ao concluir, o orquestrador grava `AGENDADO` e o evento `AgendamentoCriado` (Outbox) na mesma transação. Esse evento fecha os estados temporários: **Pacientes** limpa a flag "em andamento", **Triagem** torna a classificação definitiva e **Notificações** libera o envio. Até lá nada é enviado: senão uma SAGA que falhasse depois do passo 4 deixaria o paciente com a confirmação de uma consulta inexistente.
 
 ## 4. Tabela de compensações
 
@@ -78,6 +78,7 @@ Endpoints (ver contratos OpenAPI): `DELETE /triagens?sagaId=` · `DELETE /pacien
 
 - **Segurança:** uma compensação nunca desfaz o trabalho de **outra** SAGA (ex.: liberar o horário que outro paciente acabou de reservar, ou limpar a flag de outro agendamento em curso).
 - **Timeout:** se a resposta se perdeu, o orquestrador não conhece o id criado no serviço remoto, mas sempre conhece o `sagaId`.
+- **Pedido atrasado:** um pedido perdido num timeout pode ser entregue **depois** da compensação. Cada participante registra as SAGAs encerradas e recusa esse pedido com `409`; sem isso, a flag do paciente ficaria presa para sempre.
 
 ## 5. Cenário de falha
 
