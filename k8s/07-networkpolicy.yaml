@@ -21,6 +21,26 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
+metadata: { name: db-agendamento-leitura, namespace: saudeconecta }
+spec:
+  podSelector: { matchLabels: { app: db-agendamento-leitura } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: agendamento } } }]
+      ports: [{ protocol: TCP, port: 27017 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: cache-agendamento, namespace: saudeconecta }
+spec:
+  podSelector: { matchLabels: { app: cache-agendamento } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: agendamento } } }]
+      ports: [{ protocol: TCP, port: 6379 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
 metadata: { name: db-triagem, namespace: saudeconecta }
 spec:
   podSelector: { matchLabels: { app: db-triagem } }

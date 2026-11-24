@@ -287,8 +287,8 @@ async function agendaDaSaga(c, s) {
   const cancelado = s.estado !== 'EM_ANDAMENTO';
   return {
     ...d, id: s.agendamento_id, paciente_id: s.paciente_id, slot_id: s.slot_id, status: cancelado ? 'CANCELADO' : 'PENDENTE', urgencia: s.urgencia,
-    motivo: cancelado ? s.motivo : null, saga_id: s.id, version: cancelado ? 1 : 0, atualizado_em: s.atualizado_em,
+    motivo: cancelado ? s.motivo : null, saga_id: s.id, version: cancelado ? 1 : 0, criado_em: s.criado_em, atualizado_em: s.atualizado_em,
   };
 }
 
-module.exports = { criarOrquestrador, NOMES, MOTIVO };
+module.exports = { criarOrquestrador, agendaDaSaga, NOMES, MOTIVO };

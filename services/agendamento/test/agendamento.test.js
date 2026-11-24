@@ -10,37 +10,41 @@ const { criarApp } = require('../../../libs/comum/http');
 const { criarRotas } = require('../src/rotas');
 const { criarOrquestrador } = require('../src/saga');
 const { semear, UBS, PROFISSIONAIS } = require('../src/seed');
+const { criarAmbiente } = require('./apoio');
 
 const pool = criarPool();
 const migrar = (p) => migrarDir(p, path.join(__dirname, '..', 'migrations'));
 const ctx = { correlationId: 'teste' };
 const CLINICA = PROFISSIONAIS[0][0], PEDIATRIA = PROFISSIONAIS[1][0], CENTRO = UBS[0][0];
-let server, base;
+let server, base, amb;
 
 before(async () => {
   for (let i = 0; ; i++) { try { await pool.query('SELECT 1'); break; } catch (e) { if (i > 30) throw e; await new Promise((r) => setTimeout(r, 500)); } }
   await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public');
   await migrar(pool);
   await semear(pool);
-  server = criarApp({ nome: 'teste', rotas: criarRotas({ pool, saga: criarOrquestrador({ pool }) }), pronto: async () => ({ db: 'up' }) }).listen(0);
+  amb = await criarAmbiente();
+  server = criarApp({ nome: 'teste', rotas: criarRotas({ pool, saga: criarOrquestrador({ pool }), consultas: amb.consultas }), pronto: async () => ({ db: 'up' }) }).listen(0);
   base = `http://127.0.0.1:${server.address().port}/api/v1`;
 });
 beforeEach(async () => {
   await pool.query('TRUNCATE agendamentos, outbox_events, saga_log, saga_instances');
-  await pool.query("UPDATE slots SET status='LIVRE'");
+  await pool.query("UPDATE slots SET status='LIVRE', version=0");
+  await amb.limpar();
 });
-after(async () => { server.close(); await pool.end(); });
+after(async () => { server.close(); await amb.fechar(); await pool.end(); });
 
 const tx = (fn) => transacao(pool, fn);
 const slots = async (prof, n) => (await pool.query('SELECT id FROM slots WHERE profissional_id=$1 ORDER BY inicio LIMIT $2', [prof, n])).rows.map((r) => r.id);
 const statusSlot = async (id) => (await pool.query('SELECT status FROM slots WHERE id=$1', [id])).rows[0].status;
 const eventos = async () => (await pool.query('SELECT event_type FROM outbox_events ORDER BY seq')).rows.map((r) => r.event_type);
 const novo = (slotId, extra) => ({ agendamentoId: randomUUID(), pacienteId: randomUUID(), sagaId: randomUUID(), slotId, urgencia: 'VERDE', ...extra });
-const agendado = async (slotId, extra) => { const d = novo(slotId, extra); await tx((c) => agenda.reservar(c, ctx, d)); await tx((c) => agenda.mudarStatus(c, d.agendamentoId, 'AGENDADO')); return d; };
+const agendado = async (slotId, extra) => { const d = novo(slotId, extra); await tx((c) => agenda.reservar(c, ctx, d)); await tx(async (c) => agenda.eventoAgendamento(c, ctx, await agenda.mudarStatus(c, d.agendamentoId, 'AGENDADO'), 'AgendamentoCriado', 'criado')); return d; };
 const chamar = async (metodo, caminho, { corpo, papel = 'gestor', usuario } = {}) => {
   const headers = { 'content-type': 'application/json' };
   if (papel) headers['X-User-Role'] = papel;
   if (usuario) headers['X-User-Id'] = usuario;
+  if (metodo === 'GET') await amb.projetar(pool);
   const r = await fetch(base + caminho, { method: metodo, headers, body: corpo === undefined ? undefined : JSON.stringify(corpo) });
   return { status: r.status, tipo: r.headers.get('content-type'), corpo: await r.json() };
 };
@@ -180,6 +184,7 @@ test('escala gera horarios dentro do expediente, sem duplicar nem sobrepor', asy
 test('consulta de horarios valida parametros e so traz livres', async () => {
   assert.equal((await chamar('GET', '/slots')).status, 400);
   assert.equal((await chamar('GET', `/slots?ubsId=${CENTRO}&dataInicio=abc`)).status, 400);
+  await amb.projetor.reconstruir(pool);
   const q = `/slots?ubsId=${CENTRO}&especialidade=${encodeURIComponent('Clínica Geral')}`;
   const antes = (await chamar('GET', q)).corpo;
   assert.ok(antes.length > 0 && antes.every((s) => s.status === 'LIVRE'));

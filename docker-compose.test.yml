@@ -5,8 +5,8 @@ name: saudeconecta-testes
 services:
   agendamento:
     build: { context: ., dockerfile: services/agendamento/Dockerfile, target: teste }
-    environment: { DB_HOST: pg-agendamento, DB_USER: teste, DB_PASSWORD: teste, DB_NAME: teste }
-    depends_on: { pg-agendamento: { condition: service_healthy } }
+    environment: { DB_HOST: pg-agendamento, DB_USER: teste, DB_PASSWORD: teste, DB_NAME: teste, LEITURA_MONGO_HOST: mongo, LEITURA_REDIS_HOST: redis-leitura }
+    depends_on: { pg-agendamento: { condition: service_healthy }, mongo: { condition: service_healthy }, redis-leitura: { condition: service_healthy } }
   pacientes:
     build: { context: ., dockerfile: services/pacientes/Dockerfile, target: teste }
     environment: { DB_HOST: pg-pacientes, DB_USER: teste, DB_PASSWORD: teste, DB_NAME: teste, RABBITMQ_HOST: rabbitmq, RABBITMQ_USER: teste, RABBITMQ_PASSWORD: teste }
@@ -27,9 +27,10 @@ services:
     tmpfs: [/var/lib/postgresql/data]
     healthcheck: { test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U teste -d teste"], interval: 2s, retries: 20 }
   pg-pacientes: *pg
-  redis:
+  redis: &redis
     image: redis:7-alpine
     healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 2s, retries: 20 }
+  redis-leitura: *redis
   mongo:
     image: mongo:7
     tmpfs: [/data/db]

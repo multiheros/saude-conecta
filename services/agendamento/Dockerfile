@@ -18,7 +18,7 @@ ENV NODE_ENV=production PORT=8002
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY libs/comum ./libs/comum
-COPY services/agendamento/server.js ./services/agendamento/
+COPY services/agendamento/server.js services/agendamento/reprojetar.js ./services/agendamento/
 COPY services/agendamento/src ./services/agendamento/src
 COPY services/agendamento/migrations ./services/agendamento/migrations
 USER node

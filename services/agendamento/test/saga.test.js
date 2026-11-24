@@ -11,6 +11,7 @@ const { criarOrquestrador, MOTIVO } = require('../src/saga');
 const { criarRotas } = require('../src/rotas');
 const agenda = require('../src/agenda');
 const { semear, PROFISSIONAIS } = require('../src/seed');
+const { criarAmbiente } = require('./apoio');
 
 const pool = criarPool();
 const CFG = { leaseMs: 1500, timeoutMs: 250, timeoutTriagemMs: 400, backoffMs: 10, pendenteMs: 50, intervaloMs: 20 };
@@ -272,9 +273,11 @@ test('parada ordenada solta a SAGA para outra replica assumir na hora', async ()
   await ate(a.id, 'CONCLUIDA');
 });
 
-test('API: 202 com Location, idempotencia, validacao e permissoes', async () => {
-  const o = orq(), [s, s2] = await slots(2);
-  server = criarApp({ nome: 't', rotas: criarRotas({ pool, saga: o }), pronto: async () => ({ db: 'up' }) }).listen(0);
+test('API: 202 com Location, idempotencia, validacao e permissoes', async (t) => {
+  const o = orq(), [s, s2] = await slots(2), amb = await criarAmbiente();
+  t.after(() => amb.fechar());
+  await amb.limpar();
+  server = criarApp({ nome: 't', rotas: criarRotas({ pool, saga: o, consultas: amb.consultas }), pronto: async () => ({ db: 'up' }) }).listen(0);
   base = `http://127.0.0.1:${server.address().port}/api/v1`;
   const eu = randomUUID(), outro = randomUUID();
   const req = async (m, c, { corpo, papel = 'paciente', quem = eu, chave } = {}) => {
@@ -284,9 +287,11 @@ test('API: 202 com Location, idempotencia, validacao e permissoes', async () => 
   const corpo = { pacienteId: eu, slotId: s, sintomas: 'tosse ha dois dias' };
   const r = await req('POST', '/agendamentos', { corpo, chave: 'k1' });
   assert.equal(r.status, 202);
-  assert.equal(r.loc, `/api/v1/agendamentos/${r.corpo.id}`);
+  assert.equal(r.loc, `/api/v1/agendamentos/${r.corpo.id}?versaoMinima=0`);
   assert.deepEqual(Object.keys(r.corpo._links), ['self']);
-  assert.equal((await req('GET', `/agendamentos/${r.corpo.id}`)).status, 200, 'visivel logo apos o 202');
+  setTimeout(() => amb.projetar(pool), 300);
+  assert.equal((await req('GET', r.loc.replace('/api/v1', ''))).status, 200, 'visivel logo apos o 202, mesmo antes da projecao');
+  assert.equal((await req('GET', `/agendamentos/${r.corpo.id}?versaoMinima=x`)).status, 400);
   assert.equal((await req('POST', '/agendamentos', { corpo, chave: 'k1' })).corpo.id, r.corpo.id);
   await ate(r.corpo.id, 'CONCLUIDA');
   assert.equal((await pool.query('SELECT count(*)::int n FROM saga_instances')).rows[0].n, 1);

@@ -11,7 +11,8 @@ falhas=0
 ok()   { echo "  ok    $1"; }
 erro() { echo "  FALHA $1"; falhas=$((falhas + 1)); }
 
-BANCOS="db-pacientes:5432 db-agendamento:5432 db-triagem:27017 db-notificacoes:6379"
+# servidor:porta:dono
+BANCOS="db-pacientes:5432:pacientes db-agendamento:5432:agendamento db-agendamento-leitura:27017:agendamento cache-agendamento:6379:agendamento db-triagem:27017:triagem db-notificacoes:6379:notificacoes"
 ORIGENS="pacientes agendamento triagem notificacoes bff-web bff-admin gateway"
 
 ip_de() {
@@ -48,15 +49,15 @@ s.on('connect', () => fim('ABERTA')); s.on('error', () => fim('FECHADA')); s.on(
 
 echo "1. Cada servico alcanca o proprio banco"
 for b in $BANCOS; do
-  host=${b%%:*}; porta=${b##*:}; dono=${host#db-}
+  IFS=: read -r host porta dono <<< "$b"
   conecta "$dono" "$host" "$porta" && ok "$dono -> $host" || erro "$dono nao alcanca $host"
 done
 
 echo "2. Ninguem alcanca o banco alheio"
 for o in $ORIGENS; do
   for b in $BANCOS; do
-    host=${b%%:*}; porta=${b##*:}
-    [ "$host" = "db-$o" ] && continue
+    IFS=: read -r host porta dono <<< "$b"
+    [ "$dono" = "$o" ] && continue
     ip=$(ip_de "$host")
     [ -n "$ip" ] || { echo "  $host nao esta no ar" >&2; exit 2; }
     if conecta "$o" "$host" "$porta" || conecta "$o" "$ip" "$porta"; then
@@ -74,10 +75,14 @@ for pg in pacientes agendamento; do
     psql -h "$(ip_de "db-$pg")" -U "$pg" -d "$pg" -w -c 'select 1' 2>&1)
   [[ $saida == *"password authentication failed"* ]] && ok "db-$pg recusa senha errada" || erro "db-$pg: $saida"
 done
-saida=$(docker compose exec -T db-notificacoes sh -c 'unset REDISCLI_AUTH; redis-cli ping' 2>&1)
-[[ $saida == *NOAUTH* ]] && ok "db-notificacoes recusa sem senha" || erro "db-notificacoes respondeu: $saida"
-saida=$(docker compose exec -T db-triagem mongosh --quiet --eval 'db.adminCommand({listDatabases:1})' 2>&1)
-[[ $saida == *"requires authentication"* ]] && ok "db-triagem recusa sem senha" || erro "db-triagem aceitou acesso sem senha"
+for r in db-notificacoes cache-agendamento; do
+  saida=$(docker compose exec -T $r sh -c 'unset REDISCLI_AUTH; redis-cli ping' 2>&1)
+  [[ $saida == *NOAUTH* ]] && ok "$r recusa sem senha" || erro "$r respondeu: $saida"
+done
+for m in db-triagem db-agendamento-leitura; do
+  saida=$(docker compose exec -T $m mongosh --quiet --eval 'db.adminCommand({listDatabases:1})' 2>&1)
+  [[ $saida == *"requires authentication"* ]] && ok "$m recusa sem senha" || erro "$m aceitou acesso sem senha"
+done
 
 echo
 [ "$falhas" -eq 0 ] && echo "Isolamento OK" || { echo "$falhas falha(s)"; exit 1; }
