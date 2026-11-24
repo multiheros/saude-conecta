@@ -1,0 +1,429 @@
+[
+ {
+  "id": 1,
+  "esperado": [
+   "VERMELHO"
+  ],
+  "producao": "VERMELHO",
+  "origem": "LLM",
+  "regras": "VERMELHO",
+  "justificativa": "Como há uma pessoa caída que não responde, trata-se de um risco imediato de vida que não deve ser agendado. Por favor, ligue imediatamente para o 192 ou vá à emergência.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Desmaio e parada cardíaca",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.3 Crise epiléptica e epilepsia > Dicas úteis:",
+    "pagina": 43
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.20 Tonturas e vertigens > Encaminhamento ao pronto-socorro",
+    "pagina": 189
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Tontura",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.20 Tonturas e vertigens > Sensação de síncope iminente",
+    "pagina": 189
+   }
+  ]
+ },
+ {
+  "id": 2,
+  "esperado": [
+   "LARANJA",
+   "VERMELHO"
+  ],
+  "producao": "LARANJA",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Como você relatou suor frio, tremor e confusão após o uso de insulina, o protocolo indica urgência Laranja, devendo procurar atendimento em até 4 horas ou ir à unidade agora.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Diabetes descompensado",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.4 Descompensação do diabetes mellitus: hipoglicemia e hiperglicemia > Causas, sinais/sintomas e manejo da hipoglicemia:",
+    "pagina": 51
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.4 Descompensação do diabetes mellitus: hipoglicemia e hiperglicemia > Hiperglicemia",
+    "pagina": 52
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.4 Descompensação do diabetes mellitus: hipoglicemia e hiperglicemia > Hiperglicemia",
+    "pagina": 53
+   }
+  ]
+ },
+ {
+  "id": 3,
+  "esperado": [
+   "VERMELHO"
+  ],
+  "producao": "VERMELHO",
+  "origem": "LLM",
+  "regras": "VERMELHO",
+  "justificativa": "Como você apresentou língua inchada e rouquidão após comer camarão, isso indica uma alergia grave com risco imediato. Vá para a emergência ou ligue 192 (SAMU) agora mesmo.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Alergia grave (anafilaxia)",
+    "pagina": null
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dor de ouvido e de garganta",
+    "pagina": null
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Falta de ar, chiado e tosse",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.11 Dor de garganta",
+    "pagina": 111
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Diarreia e vômito",
+    "pagina": null
+   }
+  ]
+ },
+ {
+  "id": 4,
+  "esperado": [
+   "LARANJA"
+  ],
+  "producao": "LARANJA",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Você relatou cansaço para respirar e chiado que está piorando, o que exige atendimento em até quatro horas. Caso não haja horário nesse prazo, procure a UPA ou a unidade agora.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Falta de ar, chiado e tosse",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.6 Dispneia > Diagnóstico",
+    "pagina": 66
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.6 Dispneia > Tratamento da crise de asma na unidade de saúde ou em domicílio",
+    "pagina": 68
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.6 Dispneia > Tratamento da exacerbação",
+    "pagina": 67
+   }
+  ]
+ },
+ {
+  "id": 5,
+  "esperado": [
+   "VERDE"
+  ],
+  "producao": "VERDE",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "As feridas com crosta sugerem impetigo, que é classificado como uma queixa aguda sem sinal de alerta e prazo de atendimento de 72 horas. Como seu filho tem menos de 12 anos, o atendimento será com a Pediatria.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Problemas de pele",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.18 Rinossinusites/síndromes gripais > Rinossinusites agudas",
+    "pagina": 168
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.18 Rinossinusites/síndromes gripais > Complicações",
+    "pagina": 171
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.2 Cefaleia > Diagnóstico Anamnese",
+    "pagina": 31
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.16 Mordedura de animais > Sobre o ferimento",
+    "pagina": 155
+   }
+  ]
+ },
+ {
+  "id": 6,
+  "esperado": [
+   "LARANJA"
+  ],
+  "producao": "LARANJA",
+  "origem": "LLM",
+  "regras": "VERDE",
+  "justificativa": "Como você está com dor embaixo, do lado direito, com febre, o atendimento é classificado como laranja com prazo de 4 horas. Se não houver horário nesse prazo, procure a unidade ou a UPA agora.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dor de barriga (dor abdominal)",
+    "pagina": null
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dor de ouvido e de garganta",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.11 Dor de garganta > Faringite estreptocócica",
+    "pagina": 112
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.13 Dor torácica > Estratificação da dor",
+    "pagina": 123
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.13 Dor torácica > Estratificação da dor",
+    "pagina": 124
+   }
+  ]
+ },
+ {
+  "id": 7,
+  "esperado": [
+   "AMARELO",
+   "LARANJA"
+  ],
+  "producao": "AMARELO",
+  "origem": "LLM",
+  "regras": "VERDE",
+  "justificativa": "A presença de pus e febre alta indica um atendimento prioritário com risco moderado. O prazo é de 24 horas.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dor de ouvido e de garganta",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.10 Dor de ouvido > Diagnóstico e tratamento das otites",
+    "pagina": 104
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.10 Dor de ouvido > Abscesso de conduto (otite externa furunculosa)",
+    "pagina": 106
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.10 Dor de ouvido > Otite média aguda (OMA)",
+    "pagina": 107
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.10 Dor de ouvido > Encaminhamento",
+    "pagina": 109
+   }
+  ]
+ },
+ {
+  "id": 8,
+  "esperado": [
+   "VERDE"
+  ],
+  "producao": "VERDE",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Sua queixa de dor lombar após carregar peso é uma queixa aguda sem sinal de alerta, devendo ser avaliada em até 72 horas.",
+  "fontes": [
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.12 Dor lombar > Orientações",
+    "pagina": 120
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.21 Urgências odontológicas > Deslocamento de disco sem redução",
+    "pagina": 200
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.9 Dor abdominal > Constipação intestinal",
+    "pagina": 101
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.21 Urgências odontológicas > Dores Periapicais Pericementite apical aguda simples",
+    "pagina": 193
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.9 Dor abdominal > Diagnóstico Causas de dor abdominal",
+    "pagina": 93
+   }
+  ]
+ },
+ {
+  "id": 9,
+  "esperado": [
+   "VERMELHO"
+  ],
+  "producao": "VERMELHO",
+  "origem": "LLM",
+  "regras": "LARANJA",
+  "justificativa": "Pressão muito alta acompanhada de vista embaçada e dor no peito indica risco imediato de vida. Não se agenda: ligue 192 (SAMU) ou vá à emergência agora.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Pressão alta",
+    "pagina": null
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dor no peito",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.14 Hipertensão arterial sistêmica – alterações agudas > Dissecção aguda de aorta",
+    "pagina": 131
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.14 Hipertensão arterial sistêmica – alterações agudas > Definições",
+    "pagina": 129
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.14 Hipertensão arterial sistêmica – alterações agudas > Anamnese e exame físico",
+    "pagina": 131
+   }
+  ]
+ },
+ {
+  "id": 10,
+  "esperado": [
+   "VERDE"
+  ],
+  "producao": "VERDE",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Seu quadro apresenta olho vermelho com remela, o que caracteriza uma queixa aguda sem sinal de alerta. O prazo para atendimento é de até 72 horas.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dente e olho",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.22 Urgências oftalmológicas: “olho vermelho” > Tratamentos e encaminhamentos de outras causas de olho vermelho",
+    "pagina": 215
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.22 Urgências oftalmológicas: “olho vermelho” > Diagnóstico diferencial",
+    "pagina": 212
+   }
+  ]
+ },
+ {
+  "id": 11,
+  "esperado": [
+   "AMARELO",
+   "LARANJA"
+  ],
+  "producao": "AMARELO",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Sua queixa relata violência doméstica com medo de ficar em casa, exigindo atendimento prioritário com risco moderado. A equipe está pronta para acolher e orientar você com segurança.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Sofrimento mental e violência",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.25 Violência e maus-tratos > Frequência irregular à escola Sinais de alerta para suspeição de violência contra a mulher",
+    "pagina": 243
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.25 Violência e maus-tratos > Ações das equipes de Atenção Básica nos casos de violência doméstica e maus-tratos",
+    "pagina": 240
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.25 Violência e maus-tratos > Ações das equipes de Atenção Básica nos casos de violência doméstica e maus-tratos",
+    "pagina": 239
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.25 Violência e maus-tratos > Ações das equipes de Atenção Básica nos casos de violência sexual",
+    "pagina": 241
+   }
+  ]
+ },
+ {
+  "id": 12,
+  "esperado": [
+   "AZUL"
+  ],
+  "producao": "AZUL",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Como você está sem sintomas e procura o exame preventivo, a situação é preventiva com prazo de até 15 dias.",
+  "fontes": [
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. I",
+    "secao": "3.3 Avaliação de risco e vulnerabilidade",
+    "pagina": 33
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.9 Dor abdominal > Anamnese e exame físico",
+    "pagina": 96
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.21 Urgências odontológicas > Dores Periapicais Pericementite apical aguda simples",
+    "pagina": 193
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.9 Dor abdominal > Doença inflamatória pélvica (DIP)",
+    "pagina": 99
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.21 Urgências odontológicas > Dores dentinopulpares Cárie",
+    "pagina": 191
+   }
+  ]
+ }
+]
