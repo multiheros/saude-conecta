@@ -1,4 +1,4 @@
-# 🐳 Containerização e Orquestração (Parte 3)
+# 🐳 Containerização e Orquestração
 
 Como o sistema roda em containers (Docker Compose) e no cluster (Kubernetes), e por que cada decisão foi tomada. Instruções de execução no [README](../README.md#-como-executar).
 

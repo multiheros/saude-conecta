@@ -21,6 +21,7 @@
 | 9 | [CQRS](#9-cqrs) | Como servir leituras rápidas sem arriscar a escrita? |
 | 10 | [Padrões distribuídos — resumo](#10-padrões-distribuídos--resumo) | Que problema cada padrão resolve? |
 | 11 | [Requisitos da Parte 2 × onde estão](#11-requisitos-da-parte-2--onde-estão) | Onde está cada entrega? |
+| 12 | [Requisitos da Parte 4 × onde estão](#12-requisitos-da-parte-4--onde-estão) | Onde está e como se prova? |
 
 ---
 
@@ -407,3 +408,19 @@ flowchart LR
 | 4.5 Banco por serviço, consistência eventual, dual write, outbox | [§4](#4-database-per-service-e-outbox) · [`outbox-e-consistencia.md`](docs/decisoes-tecnicas/outbox-e-consistencia.md) |
 | 4.6 SAGA: variante justificada, 3+ serviços, compensações, diagramas | [§8](#8-saga-orquestrada) · [`saga-agendamento.md`](docs/arquitetura/saga-agendamento.md) |
 | 4.7 CQRS: separação, justificativa, atualização e defasagem | [§9](#9-cqrs) · [`cqrs-agendamento.md`](docs/arquitetura/cqrs-agendamento.md) |
+
+## 12. Requisitos da Parte 4 × onde estão
+
+| Requisito do enunciado | Onde está | Prova |
+|------------------------|-----------|-------|
+| 6.1 Fluxo de ponta a ponta por gateway, BFF e serviços | [`gateway-routing.md`](docs/gateway-routing.md) · [`clientes.md`](docs/clientes.md) | `scripts/verificar_telas.sh`, `verificar_gateway.sh` |
+| 6.1 SAGA: caminho feliz e falha com compensação | [`saga-agendamento.md`](docs/arquitetura/saga-agendamento.md) | `scripts/demo/3-saga.sh`, `5-falha.sh`, `verificar_saga.sh` |
+| 6.1 CQRS refletindo uma escrita | [`cqrs-agendamento.md`](docs/arquitetura/cqrs-agendamento.md) | `scripts/demo/4-cqrs.sh`, `verificar_cqrs.sh` |
+| 6.1 Bancos separados | [`containerizacao.md`](docs/containerizacao.md) | `scripts/demo/1-bancos.sh`, `verificar_isolamento.sh` |
+| 6.2 LLM com propósito no domínio | [`llm-triagem.md`](docs/arquitetura/llm-triagem.md) | `scripts/demo/2-triagem.sh` |
+| 6.2 RAG: ingestão, embeddings, base vetorial, recuperação e geração | [`rag-triagem.md`](docs/arquitetura/rag-triagem.md) | `scripts/verificar_rag.sh` |
+| 6.2 Avaliação do RAG, com e sem recuperação | [`rag-avaliacao.md`](docs/rag-avaliacao.md) | `scripts/avaliar_rag.sh` |
+| 6.2 LangChain: chains e tool com dado real | [`llm-triagem.md`](docs/arquitetura/llm-triagem.md) | `services/triagem/app/triador.py`, `app/llm/ferramenta.py` |
+| 6.2 Agente (opcional) | Não usado; justificativa em [`llm-triagem.md`](docs/arquitetura/llm-triagem.md#chains-langchain) | |
+| 6.2 LLM falível: timeout e retry, circuit breaker, cache, fallback | [`llm-triagem.md`](docs/arquitetura/llm-triagem.md#dependência-remota-falível) | `scripts/demo/7-llm.sh`, `verificar_llm.sh` |
+| 6.2 Latência e custo | [`llm-latencia-custo.md`](docs/llm-latencia-custo.md) | `scripts/avaliar_rag.sh latencia` |
