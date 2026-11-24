@@ -20,7 +20,7 @@ http()       { dc exec -T agendamento node -e "fetch('http://127.0.0.1:8002$2',{
 espera()     { local t0; t0=$(date +%s%N); for _ in $(seq 150); do [ "$(eval "$1")" = "$2" ] && { echo $(( ($(date +%s%N) - t0) / 1000000 )); return 0; }; sleep 0.2; done; return 1; }
 
 echo "0. Subindo Agendamento, PostgreSQL e RabbitMQ"
-docker compose up -d --build agendamento rabbitmq >/dev/null 2>&1 || falha "nao subiu"
+docker compose up -d --build --no-deps db-agendamento rabbitmq agendamento >/dev/null 2>&1 || falha "nao subiu"
 espera 'http GET /ready' 200 >/dev/null || falha "servico nao ficou pronto"
 espera pendentes 0 >/dev/null || falha "outbox nao esvaziou"
 sleep 2; antes=$(fila); ok "outbox vazio, $antes mensagens na fila"
