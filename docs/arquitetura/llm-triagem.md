@@ -71,6 +71,6 @@ scripts/verificar_llm.sh   # prova tudo acima na stack real, sem chave (~3 min)
 O script e os testes usam o cliente real do Gemini contra um [servidor falso](../../services/triagem/tests/gemini_falso.py) que fala a mesma API: provam a integração e as falhas, **não a qualidade do modelo**, que será medida com a chave.
 
 ## Limitações
-- Ainda não exercitado com o provedor real; latência, custo e qualidade serão medidos na avaliação.
+- A camada gratuita permite 15 chamadas por minuto e oscila: há picos de demora e erros 503. Latência, custo e qualidade serão medidos na avaliação.
 - Circuito e indicadores são por réplica e zeram ao reiniciar.
 - A lista de sinais de alarme é do grupo, sem validação clínica, e não reconhece toda forma de descrever um sintoma.

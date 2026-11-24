@@ -234,6 +234,8 @@ Demonstração do sistema sendo levantado com Docker Compose e Kubernetes (Docke
 docker compose up -d --build
 ```
 
+Para subir depois sem internet e sem depender do Docker Hub: `scripts/preparar.sh` uma vez e, dali em diante, `docker compose up -d --no-build`.
+
 Para usar o LLM na triagem, copie `.env.example` para `.env` e preencha `GEMINI_API_KEY` antes de subir. Sem a chave, a triagem funciona por regras.
 
 Entrada única pelo gateway:
@@ -265,32 +267,10 @@ docker compose down -v     # para e apaga os volumes
 ### Kubernetes (kind)
 
 ```bash
-# 1. cluster local com o Ingress exposto em http://localhost:8081
-kind create cluster --config k8s/cluster/kind-config.yaml
-
-# 2. imagens (build local e carga no cluster)
-for s in pacientes agendamento notificacoes; do docker build -t saudeconecta/$s:1.0 -f services/$s/Dockerfile .; done
-docker build -t saudeconecta/triagem:1.0 services/triagem
-for b in web admin; do docker build -t saudeconecta/bff-$b:1.0 -f bff/$b/Dockerfile .; done
-docker build -t saudeconecta/gateway:1.0 gateway
-for a in paciente gestor; do docker build -t saudeconecta/web-$a:1.0 --build-arg APP=$a clientes; done
-docker build -t saudeconecta/rabbitmq:1.0 infra/rabbitmq
-for i in pacientes agendamento triagem notificacoes bff-web bff-admin gateway web-paciente web-gestor rabbitmq; do kind load docker-image saudeconecta/$i:1.0 --name saudeconecta; done
-
-# 3. Ingress controller
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml
-kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=180s
-
-# 4. aplicação
-kubectl apply -f k8s/00-namespace.yaml
-scripts/k8s-chaves.sh            # par de chaves do JWT, gerado na hora
-kubectl apply -f k8s/
-kubectl -n saudeconecta get pods
-
-# 5. teste e escalabilidade
-curl http://localhost:8081/web/v1/home
-kubectl -n saudeconecta scale deploy/bff-web --replicas=4
+scripts/k8s-subir.sh     # cluster kind, Ingress, imagens, chaves e manifestos; http://localhost:8081
 ```
+
+Com um comando: cria o cluster se não existir, constrói e carrega as imagens, gera as chaves do JWT e espera tudo ficar pronto. Se houver `GEMINI_API_KEY` no `.env`, cria o Secret do LLM. `CLUSTER=` e `PORTA=` mudam o nome e a porta.
 
 Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, imagens e manifestos em [`docs/containerizacao.md`](docs/containerizacao.md).
 
@@ -331,6 +311,7 @@ Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, 
 | [`docs/api/`](docs/api/) | Contratos OpenAPI dos 4 serviços *(Parte 2)* |
 | [`docs/decisoes-tecnicas/api-guidelines.md`](docs/decisoes-tecnicas/api-guidelines.md) | Versionamento por URI e HATEOAS *(Parte 2)* |
 | [`docs/decisoes-tecnicas/outbox-e-consistencia.md`](docs/decisoes-tecnicas/outbox-e-consistencia.md) | Consistência eventual, Dual Write e Transactional Outbox *(Parte 2)* |
+| [`docs/demonstracao.md`](docs/demonstracao.md) | Cenas da demonstração, preparo e plano B |
 | [`docs/clientes.md`](docs/clientes.md) | App do paciente e painel do gestor |
 | [`docs/arquitetura/rag-triagem.md`](docs/arquitetura/rag-triagem.md) | RAG da Triagem: base, embeddings, ChromaDB e recuperação |
 | [`docs/arquitetura/llm-triagem.md`](docs/arquitetura/llm-triagem.md) | LLM da Triagem: chains, tool, resiliência e privacidade |

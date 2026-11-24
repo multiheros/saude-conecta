@@ -102,6 +102,7 @@ A resposta traz o cabeçalho `X-Instance` (nome do pod), então a distribuição
 
 | Comando | O que prova |
 |---------|-------------|
+| `scripts/e2e.sh` | Todas as provas abaixo, uma por vez, com resumo (~17 min) |
 | `scripts/testar.sh` | Testes dos 2 BFFs e de integração dos 4 serviços contra PostgreSQL, MongoDB, Redis e RabbitMQ descartáveis: SAGA com falha em cada passo, concorrência, compensação, eventos repetidos ou fora de ordem, permissões, DLQ e Outbox |
 | `scripts/verificar_saga.sh` | SAGA na stack real: caminho feliz, compensação em cascata, participante morto, disputa de horário e `kill -9` no orquestrador (~70 s) |
 | `scripts/verificar_cqrs.sh` | CQRS na stack real: escrita aparece na leitura, defasagem medida, MongoDB, Redis ou RabbitMQ fora, Read Model perdido e reconstruído (~90 s) |
@@ -109,10 +110,13 @@ A resposta traz o cabeçalho `X-Instance` (nome do pod), então a distribuição
 | `scripts/verificar_llm.sh` | LLM na stack real, com servidor falso no lugar do provedor: cache, privacidade, tool com a agenda real, provedor travado, circuit breaker e fallback (~3 min) |
 | `scripts/verificar_gateway.sh` | Gateway e BFFs na stack real, só pela porta publicada: JWT, perfis, cabeçalho forjado, fluxo do paciente, painel e limite de requisições (~3 min) |
 | `scripts/verificar_telas.sh` | As duas telas com navegador real, na stack completa: fluxos, compensação visível, acessibilidade (~4 min) |
+| `scripts/verificar_offline.sh` | A stack sobe sem construir nem baixar nada e funciona sem internet |
 | `scripts/verificar_outbox.sh` | Nenhum evento se perde com RabbitMQ parado, `kill -9` ou reinício do broker |
 | `scripts/verificar_isolamento.sh` | Isolamento de rede e senha dos bancos (com a stack no ar) |
 
-## 5. Limitações desta etapa
+`scripts/preparar.sh` baixa e constrói tudo com antecedência, repetindo se o Docker Hub falhar; depois, `docker compose up -d --no-build` não depende dele. As imagens têm o mesmo nome no Compose e no Kubernetes (`saudeconecta/<serviço>:1.0`).
+
+## 5. Limitações
 - Os 4 serviços já usam o próprio banco e RabbitMQ, a SAGA está completa e as consultas do Agendamento vêm do Read Model (CQRS). A **Triagem** usa RAG e LLM; sem a chave do provedor, trabalha por regras.
 - TLS não está habilitado no ambiente local.
 - Limitações das telas: [`clientes.md`](clientes.md).
