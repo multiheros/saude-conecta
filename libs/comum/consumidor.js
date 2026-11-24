@@ -6,15 +6,16 @@ const TENTATIVAS = 3;
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Falha de infraestrutura (banco fora): insiste sem limite, em vez de mandar para a DLQ.
-const TRANSITORIOS = new Set(['ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'EPIPE', '57P01', '57P02', '57P03', '08006', '08001', '53300', '40001', '40P01']);
-const transitorio = (e) => TRANSITORIOS.has(e.code) || /Connection terminated|timeout exceeded when trying to connect|Connection is closed|max retries per request/i.test(e.message);
+const TRANSITORIOS = new Set(['ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'EPIPE', '57P01', '57P02', '57P03', '08006', '08001', '53300', '40001', '40P01',
+  91, 189, 10107, 11600, 11602, 13435, 13436]); // MongoDB encerrando ou trocando de primario
+const transitorio = (e) => TRANSITORIOS.has(e.code) || /^Mongo(Network|ServerSelection|OperationTimeout|PoolCleared|WaitQueueTimeout|NotConnected|Topology)/.test(e.name) || /Connection terminated|timeout exceeded when trying to connect|Connection is closed|max retries per request/i.test(e.message);
 
 function criarConsumidor({ fila, tratar, env = process.env, pausaMs = 500 }) {
   const url = {
     protocol: 'amqp', hostname: env.RABBITMQ_HOST, port: Number(env.RABBITMQ_PORT || 5672),
     username: env.RABBITMQ_USER, password: env.RABBITMQ_PASSWORD, heartbeat: 10,
   };
-  let conexao = null, fechado = false, timer = null, emCurso = Promise.resolve();
+  let conexao = null, canalAtual = null, fechado = false, timer = null, emCurso = Promise.resolve();
 
   async function processar(canal, m) {
     let evento;
@@ -39,7 +40,7 @@ function criarConsumidor({ fila, tratar, env = process.env, pausaMs = 500 }) {
       conexao = cx;
       cx.on('error', () => {});
       cx.on('close', () => { if (conexao === cx) { conexao = null; agendar(); } });
-      const canal = await cx.createChannel();
+      const canal = canalAtual = await cx.createChannel();
       canal.on('error', () => {});
       canal.on('close', () => cx.close().catch(() => {}));
       await canal.prefetch(1);
@@ -62,6 +63,11 @@ function criarConsumidor({ fila, tratar, env = process.env, pausaMs = 500 }) {
   return {
     iniciar: conectar,
     conectado: () => conexao !== null,
+    // Mensagens a espera e na DLQ; null se nao ha conexao.
+    async fila() {
+      if (!conexao || !canalAtual) return null;
+      try { return { aEspera: (await canalAtual.checkQueue(fila)).messageCount, naDlq: (await canalAtual.checkQueue(`${fila}.dlq`)).messageCount }; } catch { return null; }
+    },
     async fechar() {
       fechado = true;
       clearTimeout(timer);

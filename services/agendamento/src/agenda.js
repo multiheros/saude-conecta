@@ -13,7 +13,7 @@ const ACOES = {
 const COMPARECIMENTO_DE = ['AGENDADO', 'CONFIRMADO'];
 
 const SELECT = `
-  SELECT a.id, a.paciente_id, a.slot_id, a.status, a.urgencia, a.motivo, a.saga_id, a.version, a.atualizado_em,
+  SELECT a.id, a.paciente_id, a.slot_id, a.status, a.urgencia, a.motivo, a.saga_id, a.version, a.criado_em, a.atualizado_em,
          s.inicio, s.fim, s.especialidade, s.ubs_id, u.nome AS ubs_nome, u.endereco AS ubs_endereco,
          s.profissional_id, p.nome AS profissional_nome
     FROM agendamentos a JOIN slots s ON s.id = a.slot_id
@@ -24,7 +24,7 @@ const evento = (c, ctx, tipo, rota, agregado, agregadoId, versao, payload) =>
 
 // Payload autossuficiente: o projetor nao precisa consultar o write model.
 const detalhe = (a) => ({
-  agendamentoId: a.id, pacienteId: a.paciente_id, status: a.status, urgencia: a.urgencia, motivo: a.motivo, sagaId: a.saga_id,
+  agendamentoId: a.id, pacienteId: a.paciente_id, status: a.status, urgencia: a.urgencia, motivo: a.motivo, sagaId: a.saga_id, criadoEm: a.criado_em,
   slot: { id: a.slot_id, inicio: a.inicio, fim: a.fim },
   ubs: { id: a.ubs_id, nome: a.ubs_nome, endereco: a.ubs_endereco },
   profissional: { id: a.profissional_id, nome: a.profissional_nome, especialidade: a.especialidade },
@@ -168,4 +168,4 @@ async function criarEscala(c, ctx, e) {
   return { id, slotsGerados: slots.length };
 }
 
-module.exports = { ACOES, SELECT, buscar, reservar, liberarReserva, confirmar, cancelar, reagendar, registrarComparecimento, criarEscala, eventoAgendamento, mudarStatus };
+module.exports = { ACOES, SELECT, detalhe, buscar, reservar, liberarReserva, confirmar, cancelar, reagendar, registrarComparecimento, criarEscala, eventoAgendamento, mudarStatus };
