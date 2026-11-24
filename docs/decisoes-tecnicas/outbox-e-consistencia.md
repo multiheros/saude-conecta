@@ -91,8 +91,10 @@ Ou o dado **e** o evento são gravados, ou **nenhum** dos dois. A entrega ao bro
 ```sql
 CREATE TABLE outbox_events (
     id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),   -- = eventId
-    aggregate_type  VARCHAR(64)  NOT NULL,            -- 'Agendamento'
+    seq             BIGINT       GENERATED ALWAYS AS IDENTITY,            -- ordem de gravação
+    aggregate_type  VARCHAR(64)  NOT NULL,            -- 'Agendamento' | 'Slot' | 'Escala'
     aggregate_id    UUID         NOT NULL,            -- id do agregado (chave de ordenação)
+    aggregate_version INTEGER    NOT NULL,            -- consumidor descarta versão antiga
     event_type      VARCHAR(96)  NOT NULL,            -- 'SlotReservado'
     event_version   SMALLINT     NOT NULL DEFAULT 1,
     routing_key     VARCHAR(128) NOT NULL,            -- 'agendamento.slot.reservado'
@@ -109,16 +111,17 @@ CREATE TABLE outbox_events (
 
 -- Índice parcial: o poller só olha o que está pendente (tabela pequena e rápida)
 CREATE INDEX idx_outbox_pending
-    ON outbox_events (next_attempt_at, created_at)
-    WHERE status = 'PENDING';
+    ON outbox_events (seq) WHERE status = 'PENDING';
 
-CREATE INDEX idx_outbox_aggregate ON outbox_events (aggregate_id, created_at);
+CREATE INDEX idx_outbox_aggregate
+    ON outbox_events (aggregate_id, seq) WHERE status = 'PENDING';
 ```
 
 | Coluna | Para quê |
 |--------|----------|
 | `id` | Vira `eventId` no envelope; chave de **idempotência** no consumidor |
-| `aggregate_id` | Garante **ordem por agregado** (eventos do mesmo agendamento saem em sequência) |
+| `aggregate_id` + `seq` | Garante **ordem por agregado**: um evento só sai depois que o anterior do mesmo agregado saiu, mesmo com retry ou várias réplicas |
+| `aggregate_version` | Permite ao consumidor descartar evento repetido ou antigo |
 | `event_type` + `event_version` | Evolução de contrato sem quebrar consumidores |
 | `routing_key` | Roteamento no *topic exchange* |
 | `payload` (JSONB) | Corpo do evento |
@@ -132,12 +135,14 @@ CREATE INDEX idx_outbox_aggregate ON outbox_events (aggregate_id, created_at);
 BEGIN;
   UPDATE slots SET status='RESERVADO' WHERE id=:slot AND status='LIVRE';  -- 0 linhas → 409
   INSERT INTO agendamentos (...) VALUES (...);
-  INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, routing_key, payload, headers)
-  VALUES ('Agendamento', :agId, 'SlotReservado', 'agendamento.slot.reservado',
+  INSERT INTO outbox_events (aggregate_type, aggregate_id, aggregate_version, event_type, routing_key, payload, headers)
+  VALUES ('Slot', :slot, :versaoSlot, 'SlotReservado', 'agendamento.slot.reservado',
           '{"agendamentoId":"...","slotId":"...","pacienteId":"...","dataHora":"2026-11-05T09:30:00-03:00"}',
           '{"correlationId":"..."}');
 COMMIT;
 ```
+
+> **Por que `SlotReservado` pertence ao agregado `Slot`:** se a vaga é liberada por um agendamento e reservada por outro, os dois eventos precisam sair nessa ordem. Como a ordem é por agregado, eles têm de ser do mesmo agregado, a vaga.
 
 > Nos serviços com MongoDB/Redis, o equivalente é uma coleção/stream `outbox_events` na mesma unidade atômica do banco (transação multi-documento no Mongo). Hoje apenas **Agendamento** (e Pacientes) publicam eventos críticos, ambos em PostgreSQL.
 
@@ -149,7 +154,7 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant MQ as RabbitMQ
     loop a cada 500 ms (ou LISTEN/NOTIFY)
-      W->>DB: BEGIN, SELECT * FROM outbox_events<br/>WHERE status='PENDING' AND next_attempt_at<=now()<br/>ORDER BY created_at LIMIT 100<br/>FOR UPDATE SKIP LOCKED
+      W->>DB: BEGIN, SELECT * FROM outbox_events<br/>WHERE status='PENDING' AND next_attempt_at<=now()<br/>AND nenhum anterior do agregado pendente<br/>ORDER BY seq LIMIT 100 FOR UPDATE SKIP LOCKED
       DB-->>W: lote de eventos
       loop cada evento
         W->>MQ: publish (persistent, mandatory) + aguarda publisher confirm
@@ -166,13 +171,14 @@ sequenceDiagram
 | Aspecto | Decisão |
 |---------|---------|
 | Leitura | `FOR UPDATE SKIP LOCKED` → várias réplicas do worker sem processar o mesmo evento |
-| Frequência | *Polling* a cada **500 ms** (+ `LISTEN/NOTIFY` opcional para reduzir latência) |
+| Frequência | *Polling* a cada **500 ms**; enquanto houver eventos, o próximo lote sai em seguida |
 | Lote | 100 eventos por ciclo |
-| Confiabilidade | *Publisher confirms* + mensagens `persistent` + filas duráveis |
-| Retry | Backoff exponencial: 1 s, 2 s, 4 s … até 5 min; após **10 tentativas** → `FAILED` + alerta |
-| Ordenação | Por `created_at` dentro do lote; ordem por agregado preservada com `aggregate_id` como chave |
+| Confiabilidade | *Publisher confirms* + `mandatory` (evento sem fila é erro, não sumiço) + mensagens `persistent` + filas duráveis, declaradas na imagem do RabbitMQ (`infra/rabbitmq`) antes de qualquer serviço subir |
+| Broker fora do ar | **Não conta como tentativa**: o evento espera em `PENDING` o tempo que for preciso |
+| Retry (broker recusou) | Backoff exponencial: 1 s, 2 s, 4 s … até 5 min; após **10 tentativas** → `FAILED` + alerta |
+| Ordenação | Por `seq`; entre eventos do mesmo agregado a ordem é garantida |
 | Entrega | *At-least-once* (publicou mas caiu antes do UPDATE → reenvia) |
-| Limpeza | Job diário remove `PUBLISHED` com mais de 7 dias |
+| Limpeza | Evolução: job diário que remove `PUBLISHED` com mais de 7 dias |
 | Latência esperada | p95 ≈ 0,5–1 s (consistente com o SLA ≤ 5 s) |
 
 ### 3.3 Idempotência no consumidor
@@ -191,12 +197,17 @@ Fluxo: `INSERT ... ON CONFLICT DO NOTHING` na **mesma transação** que aplica o
 
 ### 3.4 Observabilidade
 
-| Métrica | Alerta |
+| Métrica (`GET /metricas`, rede interna) | Alerta sugerido |
 |---------|--------|
-| `outbox_pending_count` | > 1000 por 1 min |
-| `outbox_oldest_pending_age_seconds` | **> 5 s** (violação do SLA do Read Model) |
-| `outbox_failed_count` | > 0 |
-| `consumer_dlq_depth` | > 0 |
+| `outbox.pendentes` | > 1000 por 1 min |
+| `outbox.idadeMaisAntigoSegundos` | **> 5 s** (violação do SLA do Read Model) |
+| `outbox.falhos` | > 0 |
+
+### 3.5 Como comprovar
+
+```bash
+scripts/verificar_outbox.sh   # RabbitMQ parado, kill -9 no serviço e reinício do broker
+```
 
 ## 4. Trade-offs
 

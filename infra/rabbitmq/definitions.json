@@ -1,0 +1,40 @@
+{
+  "users": [
+    { "name": "__USUARIO__", "password": "__SENHA__", "tags": "administrator" }
+  ],
+  "vhosts": [{ "name": "/" }],
+  "permissions": [
+    { "user": "__USUARIO__", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*" }
+  ],
+  "exchanges": [
+    { "name": "saudeconecta.events", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "saudeconecta.dlx", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
+  ],
+  "queues": [
+    { "name": "agendamento.projetor", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-dead-letter-exchange": "saudeconecta.dlx", "x-dead-letter-routing-key": "agendamento.projetor" } },
+    { "name": "agendamento.pacientes", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-dead-letter-exchange": "saudeconecta.dlx", "x-dead-letter-routing-key": "agendamento.pacientes" } },
+    { "name": "pacientes.agendamento", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-dead-letter-exchange": "saudeconecta.dlx", "x-dead-letter-routing-key": "pacientes.agendamento" } },
+    { "name": "triagem.agendamento", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-dead-letter-exchange": "saudeconecta.dlx", "x-dead-letter-routing-key": "triagem.agendamento" } },
+    { "name": "notificacoes.agendamento", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-dead-letter-exchange": "saudeconecta.dlx", "x-dead-letter-routing-key": "notificacoes.agendamento" } },
+    { "name": "agendamento.projetor.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "agendamento.pacientes.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "pacientes.agendamento.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "triagem.agendamento.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "notificacoes.agendamento.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} }
+  ],
+  "bindings": [
+    { "source": "saudeconecta.events", "vhost": "/", "destination": "agendamento.projetor", "destination_type": "queue", "routing_key": "agendamento.#", "arguments": {} },
+    { "source": "saudeconecta.events", "vhost": "/", "destination": "agendamento.pacientes", "destination_type": "queue", "routing_key": "pacientes.paciente.atualizado", "arguments": {} },
+    { "source": "saudeconecta.events", "vhost": "/", "destination": "pacientes.agendamento", "destination_type": "queue", "routing_key": "agendamento.agendamento.criado", "arguments": {} },
+    { "source": "saudeconecta.events", "vhost": "/", "destination": "pacientes.agendamento", "destination_type": "queue", "routing_key": "agendamento.agendamento.realizado", "arguments": {} },
+    { "source": "saudeconecta.events", "vhost": "/", "destination": "pacientes.agendamento", "destination_type": "queue", "routing_key": "agendamento.agendamento.faltou", "arguments": {} },
+    { "source": "saudeconecta.events", "vhost": "/", "destination": "triagem.agendamento", "destination_type": "queue", "routing_key": "agendamento.agendamento.criado", "arguments": {} },
+    { "source": "saudeconecta.events", "vhost": "/", "destination": "notificacoes.agendamento", "destination_type": "queue", "routing_key": "agendamento.agendamento.cancelado", "arguments": {} },
+    { "source": "saudeconecta.events", "vhost": "/", "destination": "notificacoes.agendamento", "destination_type": "queue", "routing_key": "agendamento.agendamento.reagendado", "arguments": {} },
+    { "source": "saudeconecta.dlx", "vhost": "/", "destination": "agendamento.projetor.dlq", "destination_type": "queue", "routing_key": "agendamento.projetor", "arguments": {} },
+    { "source": "saudeconecta.dlx", "vhost": "/", "destination": "agendamento.pacientes.dlq", "destination_type": "queue", "routing_key": "agendamento.pacientes", "arguments": {} },
+    { "source": "saudeconecta.dlx", "vhost": "/", "destination": "pacientes.agendamento.dlq", "destination_type": "queue", "routing_key": "pacientes.agendamento", "arguments": {} },
+    { "source": "saudeconecta.dlx", "vhost": "/", "destination": "triagem.agendamento.dlq", "destination_type": "queue", "routing_key": "triagem.agendamento", "arguments": {} },
+    { "source": "saudeconecta.dlx", "vhost": "/", "destination": "notificacoes.agendamento.dlq", "destination_type": "queue", "routing_key": "notificacoes.agendamento", "arguments": {} }
+  ]
+}

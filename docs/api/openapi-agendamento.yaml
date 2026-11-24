@@ -94,7 +94,7 @@ paths:
 
         | status | links |
         |--------|-------|
-        | PENDENTE | self, cancelar |
+        | PENDENTE | self |
         | AGENDADO | self, confirmar, reagendar, cancelar |
         | CONFIRMADO | self, reagendar, cancelar |
         | CANCELADO / REALIZADO / FALTOU | self |
@@ -158,7 +158,7 @@ paths:
           content:
             application/hal+json:
               schema: { $ref: '#/components/schemas/AgendamentoHateoas' }
-        '409': { description: Slot indisponível ou transição inválida }
+        '409': { description: 'Slot indisponível, de outra especialidade ou transição inválida' }
   /agendamentos/{id}/cancelamento:
     parameters:
       - { $ref: '#/components/parameters/AgendamentoId' }
@@ -267,7 +267,16 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/EscalaCreate' }
       responses:
-        '201': { description: Escala criada e slots gerados }
+        '201':
+          description: Escala criada e slots gerados (horários já existentes ou sobrepostos são ignorados)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  slotsGerados: { type: integer }
+        '422': { description: Dados inválidos }
         '403': { description: Apenas perfil gestor }
 components:
   securitySchemes:
@@ -361,7 +370,8 @@ components:
         diaSemana: { type: integer, minimum: 1, maximum: 7 }
         horaInicio: { type: string, example: '08:00' }
         horaFim: { type: string, example: '12:00' }
-        duracaoSlotMin: { type: integer, example: 30 }
+        duracaoSlotMin: { type: integer, minimum: 5, maximum: 240, example: 30 }
+        semanas: { type: integer, minimum: 1, maximum: 12, default: 4, description: Quantas semanas gerar a partir de hoje }
     Problem:
       type: object
       description: RFC 7807 (Problem Details)

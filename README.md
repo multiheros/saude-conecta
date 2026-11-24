@@ -224,7 +224,7 @@ Demonstração do sistema sendo levantado com Docker Compose e Kubernetes (Docke
 
 **[▶️ Assistir no YouTube](https://youtu.be/KnB0XyP8xoM)**
 
-> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A lógica de domínio (SAGA, CQRS, RAG) entra na Parte 4.
+> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A Parte 4, em andamento, substitui esses dados pela lógica real, começando por **Agendamento** (PostgreSQL, Outbox e RabbitMQ).
 
 **Requisitos:** Docker 24+ com Compose v2. Para Kubernetes: `kubectl` e [`kind`](https://kind.sigs.k8s.io).
 
@@ -257,7 +257,8 @@ kind create cluster --config k8s/cluster/kind-config.yaml
 for s in pacientes agendamento triagem notificacoes; do docker build -t saudeconecta/$s:1.0 services/$s; done
 docker build -t saudeconecta/bff-web:1.0 bff/web
 docker build -t saudeconecta/bff-admin:1.0 bff/admin
-for i in pacientes agendamento triagem notificacoes bff-web bff-admin; do kind load docker-image saudeconecta/$i:1.0 --name saudeconecta; done
+docker build -t saudeconecta/rabbitmq:1.0 infra/rabbitmq
+for i in pacientes agendamento triagem notificacoes bff-web bff-admin rabbitmq; do kind load docker-image saudeconecta/$i:1.0 --name saudeconecta; done
 
 # 3. Ingress controller
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml

@@ -1,0 +1,13 @@
+# Testes de integracao em ambiente descartavel (nao usa os volumes da stack).
+# Uso: docker compose -f docker-compose.test.yml run --build --rm agendamento
+name: saudeconecta-testes
+services:
+  agendamento:
+    build: { context: ./services/agendamento, target: teste }
+    environment: { DB_HOST: pg-agendamento, DB_USER: teste, DB_PASSWORD: teste, DB_NAME: agendamento }
+    depends_on: { pg-agendamento: { condition: service_healthy } }
+  pg-agendamento:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: teste, POSTGRES_PASSWORD: teste, POSTGRES_DB: agendamento }
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U teste -d agendamento"], interval: 2s, retries: 20 }

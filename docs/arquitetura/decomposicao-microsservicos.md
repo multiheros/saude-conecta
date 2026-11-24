@@ -149,10 +149,11 @@ flowchart TB
 | Característica | Decisão |
 |----------------|---------|
 | Topologia | 1 *topic exchange* `saudeconecta.events`; routing key `agendamento.slot.reservado` |
-| Filas | Uma por consumidor (`notificacoes.agendamento`, `agendamento.projetor`); duráveis |
+| Filas | Uma por consumidor (`notificacoes.agendamento`, `agendamento.projetor`...), duráveis, cada uma com sua DLQ. Declaradas na imagem `infra/rabbitmq` |
+| Routing key | `<serviço>.<agregado>.<fato>`, ex.: `agendamento.slot.reservado`, `agendamento.agendamento.criado` |
 | Garantia | *At-least-once* → consumidores **idempotentes** (tabela de `event_id` processados) |
 | Falhas | DLQ + retry exponencial |
-| Envelope | `eventId`, `eventType`, `version`, `occurredAt`, `correlationId`, `payload` |
+| Envelope | `eventId`, `eventType`, `version`, `occurredAt`, `correlationId`, `aggregateType`, `aggregateId`, `aggregateVersion`, `payload` |
 | Publicação | **Transactional Outbox** — ver [`outbox-e-consistencia.md`](../decisoes-tecnicas/outbox-e-consistencia.md) |
 
 **Regra:** eventos para *fatos já ocorridos* que outros serviços reagem **sem que o produtor espere**.

@@ -59,17 +59,21 @@ flowchart LR
 Fonte da verdade, normalizado (3FN), com constraints que garantem as invariantes.
 
 ```sql
+CREATE TABLE ubs (id UUID PRIMARY KEY, nome ..., endereco ..., regiao ...);
+CREATE TABLE profissionais (id UUID PRIMARY KEY, nome ..., especialidade ...);
+
 CREATE TABLE slots (
-    id              UUID PRIMARY KEY,
-    ubs_id          UUID NOT NULL,
-    profissional_id UUID NOT NULL,
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ubs_id          UUID NOT NULL REFERENCES ubs(id),
+    profissional_id UUID NOT NULL REFERENCES profissionais(id),
     especialidade   VARCHAR(64) NOT NULL,
     inicio          TIMESTAMPTZ NOT NULL,
     fim             TIMESTAMPTZ NOT NULL,
     status          VARCHAR(12) NOT NULL DEFAULT 'LIVRE'
                     CHECK (status IN ('LIVRE','RESERVADO','BLOQUEADO')),
-    version         INTEGER NOT NULL DEFAULT 0,        -- lock otimista
-    UNIQUE (profissional_id, inicio)
+    version         INTEGER NOT NULL DEFAULT 0,        -- ordena os eventos da vaga
+    -- o mesmo profissional não atende em horários sobrepostos
+    EXCLUDE USING gist (profissional_id WITH =, tstzrange(inicio, fim) WITH &&)
 );
 
 CREATE TABLE agendamentos (
@@ -78,7 +82,9 @@ CREATE TABLE agendamentos (
     slot_id       UUID NOT NULL REFERENCES slots(id),
     status        VARCHAR(12) NOT NULL,
     urgencia      VARCHAR(8),
-    saga_id       UUID,
+    motivo        VARCHAR(200),                        -- por que foi cancelado
+    saga_id       UUID UNIQUE,
+    version       INTEGER NOT NULL DEFAULT 1,          -- ordena os eventos do agendamento
     criado_em     TIMESTAMPTZ NOT NULL DEFAULT now(),
     atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -89,7 +95,9 @@ CREATE UNIQUE INDEX uq_slot_agendamento_ativo
     WHERE status IN ('PENDENTE','AGENDADO','CONFIRMADO');
 ```
 
-Reserva = `UPDATE slots SET status='RESERVADO', version=version+1 WHERE id=:id AND status='LIVRE'` (0 linhas → `409`) + `INSERT` em `agendamentos` + `INSERT` em `outbox_events`, **numa transação** (ver [`outbox-e-consistencia.md`](../decisoes-tecnicas/outbox-e-consistencia.md)).
+Esquema completo: [`services/agendamento/migrations`](../../services/agendamento/migrations).
+
+Reserva = `UPDATE slots SET status='RESERVADO', version=version+1 WHERE id=:id AND status='LIVRE' AND inicio > now()` (0 linhas → `409`) + `INSERT` em `agendamentos` + `INSERT` em `outbox_events`, **numa transação** (ver [`outbox-e-consistencia.md`](../decisoes-tecnicas/outbox-e-consistencia.md)).
 
 ## 4. Read Model — MongoDB + Redis
 
