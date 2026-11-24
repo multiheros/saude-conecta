@@ -15,6 +15,7 @@ spec:
   template:
     metadata: { labels: { app: pacientes, camada: dominio } }
     spec:
+      enableServiceLinks: false # evita variaveis como RABBITMQ_PORT=tcp://...
       containers:
         - name: pacientes
           image: saudeconecta/pacientes:1.0
@@ -53,6 +54,7 @@ spec:
   template:
     metadata: { labels: { app: agendamento, camada: dominio } }
     spec:
+      enableServiceLinks: false # evita variaveis como RABBITMQ_PORT=tcp://...
       containers:
         - name: agendamento
           image: saudeconecta/agendamento:1.0
@@ -64,6 +66,16 @@ spec:
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: AGENDAMENTO_DB_HOST } }
             - name: DB_PORT
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: AGENDAMENTO_DB_PORT } }
+            - { name: DB_NAME, value: agendamento }
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: agendamento-db, key: DB_USER } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: agendamento-db, key: DB_PASSWORD } }
+            - name: RABBITMQ_USER
+              valueFrom: { secretKeyRef: { name: rabbitmq, key: RABBITMQ_USER } }
+            - name: RABBITMQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: rabbitmq, key: RABBITMQ_PASSWORD } }
+            - { name: SEED, value: "true" } # dados ficticios de demonstracao
           readinessProbe:
             httpGet: { path: /ready, port: 8002 }
             periodSeconds: 5
@@ -91,6 +103,7 @@ spec:
   template:
     metadata: { labels: { app: triagem, camada: dominio } }
     spec:
+      enableServiceLinks: false # evita variaveis como RABBITMQ_PORT=tcp://...
       containers:
         - name: triagem
           image: saudeconecta/triagem:1.0
@@ -129,6 +142,7 @@ spec:
   template:
     metadata: { labels: { app: notificacoes, camada: dominio } }
     spec:
+      enableServiceLinks: false # evita variaveis como RABBITMQ_PORT=tcp://...
       containers:
         - name: notificacoes
           image: saudeconecta/notificacoes:1.0
@@ -167,6 +181,7 @@ spec:
   template:
     metadata: { labels: { app: bff-web, camada: borda } }
     spec:
+      enableServiceLinks: false # evita variaveis como RABBITMQ_PORT=tcp://...
       containers:
         - name: bff-web
           image: saudeconecta/bff-web:1.0
@@ -201,6 +216,7 @@ spec:
   template:
     metadata: { labels: { app: bff-admin, camada: borda } }
     spec:
+      enableServiceLinks: false # evita variaveis como RABBITMQ_PORT=tcp://...
       containers:
         - name: bff-admin
           image: saudeconecta/bff-admin:1.0

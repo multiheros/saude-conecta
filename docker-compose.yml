@@ -44,8 +44,18 @@ services:
   agendamento:
     build: ./services/agendamento
     <<: *svc-defaults
-    environment: { DB_HOST: db-agendamento, DB_PORT: "5432" }
-    networks: [backend, data-agendamento]
+    environment:
+      DB_HOST: db-agendamento
+      DB_PORT: "5432"
+      DB_NAME: agendamento
+      DB_USER: ${AGENDAMENTO_DB_USER:-agendamento}
+      DB_PASSWORD: ${AGENDAMENTO_DB_PASSWORD:-troque-me-agendamento}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-saude}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-troque-me-rabbit}
+      SEED: "true" # dados ficticios de demonstracao
+    networks: [backend, mensageria, data-agendamento]
+    # RabbitMQ nao e dependencia de partida: sem ele, os eventos esperam no Outbox.
     depends_on: { db-agendamento: { condition: service_healthy } }
 
   triagem:
@@ -120,12 +130,13 @@ services:
 
   # ---------- Mensageria ----------
   rabbitmq:
-    image: rabbitmq:3.13-management-alpine
+    build: ./infra/rabbitmq
+    hostname: rabbitmq # o nome do no define a pasta de dados: fixo para nao perder filas
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-saude}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-troque-me-rabbit}
+      RABBITMQ_USER: ${RABBITMQ_USER:-saude}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-troque-me-rabbit}
     volumes: [rabbitmq-data:/var/lib/rabbitmq]
-    networks: [backend]
+    networks: [mensageria]
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -134,12 +145,15 @@ services:
 
 # Redes:
 #  - frontend : gateway <-> BFFs (unica com porta publicada, via gateway)
-#  - backend  : gateway/BFFs <-> servicos de dominio <-> RabbitMQ
+#  - backend  : gateway/BFFs <-> servicos de dominio
+#  - mensageria: servicos de dominio <-> RabbitMQ (interna)
 #  - data-<x> : servico <x> <-> banco de <x>, uma rede por par. `internal: true`
 #               => sem saida para fora e inalcancavel pelos demais servicos.
 networks:
   frontend:
   backend:
+  mensageria:
+    internal: true
   data-pacientes:
     internal: true
   data-agendamento:
