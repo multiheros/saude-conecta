@@ -78,6 +78,13 @@ Credenciais vêm de variáveis de ambiente com valores padrão de desenvolviment
 
 > ⚠️ Os valores em `02-secrets.yaml` são **de desenvolvimento**. Em produção devem vir de um cofre (External Secrets, Sealed Secrets) e nunca ser versionados.
 
+A chave do LLM é opcional e criada à mão, sem passar pelo repositório:
+
+```bash
+kubectl -n saudeconecta create secret generic triagem-llm --from-literal=GEMINI_API_KEY=SUA_CHAVE
+kubectl -n saudeconecta rollout restart deploy/triagem
+```
+
 ### Escalabilidade
 
 ```bash
@@ -96,10 +103,11 @@ A resposta inclui `atendidoPor` (nome do pod), então a distribuição das requi
 | `scripts/verificar_saga.sh` | SAGA na stack real: caminho feliz, compensação em cascata, participante morto, disputa de horário e `kill -9` no orquestrador (~70 s) |
 | `scripts/verificar_cqrs.sh` | CQRS na stack real: escrita aparece na leitura, defasagem medida, MongoDB, Redis ou RabbitMQ fora, Read Model perdido e reconstruído (~90 s) |
 | `scripts/verificar_rag.sh` | RAG na stack real: ingestão sem internet e sem duplicar, busca com página, ChromaDB parado, travado ou perdido (~3 min) |
+| `scripts/verificar_llm.sh` | LLM na stack real, com servidor falso no lugar do provedor: cache, privacidade, tool com a agenda real, provedor travado, circuit breaker e fallback (~3 min) |
 | `scripts/verificar_outbox.sh` | Nenhum evento se perde com RabbitMQ parado, `kill -9` ou reinício do broker |
 | `scripts/verificar_isolamento.sh` | Isolamento de rede e senha dos bancos (com a stack no ar) |
 
 ## 5. Limitações desta etapa
-- Os 4 serviços já usam o próprio banco e RabbitMQ, a SAGA está completa e as consultas do Agendamento vêm do Read Model (CQRS). A **Triagem** classifica por regras e cita fontes recuperadas pelo RAG; o LLM vem em seguida.
+- Os 4 serviços já usam o próprio banco e RabbitMQ, a SAGA está completa e as consultas do Agendamento vêm do Read Model (CQRS). A **Triagem** usa RAG e LLM; sem a chave do provedor, trabalha por regras.
 - O gateway ainda não valida o JWT, e os BFFs usam uma identidade fixa de demonstração.
 - O gateway do Compose é NGINX; no Kubernetes o papel é do Ingress. Autenticação JWT e rate limiting do Kong estão documentados em [`gateway-routing.md`](gateway-routing.md) e ficam para a Parte 4.

@@ -1,6 +1,6 @@
 # RAG da Triagem
 
-Recuperação de trechos de protocolos para fundamentar a triagem. Nesta etapa os trechos viram **fontes citadas** (documento, seção e página) na triagem por regras; a geração pelo modelo de linguagem entra na etapa seguinte.
+Recuperação de trechos de protocolos para fundamentar a triagem. Os trechos entram no prompt do modelo e viram **fontes citadas** (documento, seção e página); sem o modelo, a triagem por regras cita os mesmos trechos. A geração está em [llm-triagem.md](llm-triagem.md).
 
 ```mermaid
 flowchart LR
@@ -9,7 +9,7 @@ flowchart LR
     D --> E1["Embeddings locais<br/>(768 dimensões)"] --> C[("ChromaDB")]
   end
   Q["Queixa do paciente"] --> E2["Embedding"] --> B["Top-5, similaridade de cosseno ≥ 0,58"]
-  C --> B --> T["Triagem com fontes"]
+  C --> B --> T["LLM ou regras:<br/>triagem com fontes"]
 ```
 
 ## Base de conhecimento

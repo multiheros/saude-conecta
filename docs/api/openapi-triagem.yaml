@@ -64,18 +64,19 @@ paths:
               properties:
                 sintomas: { type: string }
                 idade: { type: integer }
-                ubsId: { type: string, format: uuid }
+                ubsId: { type: string, format: uuid, description: A consulta à agenda fica restrita a esta unidade }
       responses:
         '200':
           description: Recomendação
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Recomendacao' }
+        '403': { description: 'Sem identidade de paciente, gestor ou serviço' }
         '422': { description: Sintomas insuficientes }
   /triagens/saude-llm:
     get:
       tags: [Triagens]
-      summary: Estado do circuit breaker, cache e fallback
+      summary: Estado do circuit breaker, cache e fallback da réplica que respondeu (perfis `gestor` e `servico`)
       responses:
         '200':
           description: Indicadores
@@ -88,6 +89,21 @@ paths:
                   chamadas: { type: integer }
                   acertosCache: { type: integer }
                   fallbacks: { type: integer }
+                  habilitado: { type: boolean, description: Se há chave do provedor }
+                  modelo: { type: string, nullable: true }
+                  repeticoes: { type: integer }
+                  recusadasPeloCircuito: { type: integer }
+                  tokensEntrada: { type: integer }
+                  tokensSaida: { type: integer }
+                  falhasPorMotivo: { type: object, additionalProperties: { type: integer } }
+                  latenciaMs:
+                    type: object
+                    nullable: true
+                    properties:
+                      p50: { type: integer }
+                      p95: { type: integer }
+                  instance: { type: string }
+        '403': { description: Sem permissão }
   /triagens/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -163,7 +179,7 @@ components:
         classificacao: { $ref: '#/components/schemas/Urgencia' }
         justificativa: { type: string }
         especialidadeSugerida: { type: string }
-        confianca: { type: number, format: float, minimum: 0, maximum: 1 }
+        confianca: { type: number, format: float, minimum: 0, maximum: 1, nullable: true, description: Nula quando a origem é REGRAS }
         temporaria: { type: boolean }
         origem: { type: string, enum: [LLM, CACHE, REGRAS], description: Como a classificação foi obtida }
         fontes:
@@ -196,6 +212,8 @@ components:
               slotId: { type: string, format: uuid }
               inicio: { type: string, format: date-time }
               especialidade: { type: string }
+              dentroDoPrazo: { type: boolean, description: Falso quando não há horário no prazo e são mostrados os próximos }
+        origemHorarios: { type: string, nullable: true, enum: [LLM, REGRAS], description: Quem escolheu os horários }
         orientacao: { type: string }
     Problem:
       type: object
