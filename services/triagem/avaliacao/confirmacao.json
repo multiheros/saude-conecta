@@ -1,0 +1,14 @@
+[
+  { "id": 1, "idade": 22, "queixa": "Meu primo caiu, está se tremendo todo no chão, espumando, e não responde", "nivel": ["VERMELHO"] },
+  { "id": 2, "idade": 54, "queixa": "Uso insulina e de repente fiquei gelado, tremendo e meio confuso", "nivel": ["LARANJA", "VERMELHO"] },
+  { "id": 3, "idade": 31, "queixa": "Comi camarão e minha língua está inchando, a voz ficou rouca", "nivel": ["VERMELHO"] },
+  { "id": 4, "idade": 38, "queixa": "Sou asmático, desde ontem estou chiando e cansado para respirar, a bombinha ajudou pouco", "nivel": ["LARANJA"] },
+  { "id": 5, "idade": 5, "queixa": "Apareceram feridinhas com casquinha amarelada em volta do nariz do meu filho", "nivel": ["VERDE"] },
+  { "id": 6, "idade": 19, "queixa": "A dor começou perto do umbigo e desceu para a direita, estou com febre e sem fome", "nivel": ["LARANJA"] },
+  { "id": 7, "idade": 26, "queixa": "Meu ouvido soltou um pus amarelo e estou com 39 de febre", "nivel": ["AMARELO", "LARANJA"] },
+  { "id": 8, "idade": 44, "queixa": "Dei um mau jeito carregando um saco de cimento, dói ao me abaixar, sem formigamento", "nivel": ["VERDE"] },
+  { "id": 9, "idade": 68, "queixa": "Minha pressão está 20 por 12, a vista embaçou e sinto dor no peito", "nivel": ["VERMELHO"] },
+  { "id": 10, "idade": 14, "queixa": "Acordei com o olho grudado e vermelho, com remela, sem dor, e um colega da escola também está", "nivel": ["VERDE"] },
+  { "id": 11, "idade": 28, "queixa": "Ontem meu companheiro me empurrou e me machucou, estou com medo de ficar em casa", "nivel": ["AMARELO", "LARANJA"] },
+  { "id": 12, "idade": 39, "queixa": "Faz três anos que não faço o papanicolau e queria marcar, não sinto nada", "nivel": ["AZUL"] }
+]

@@ -1,0 +1,89 @@
+{
+ "modelo": "gemini-3.5-flash-lite",
+ "precoEntrada": 0.3,
+ "precoSaida": 2.5,
+ "triagem": {
+  "etapas": {
+   "embedding": {
+    "n": 30,
+    "p50": 8,
+    "p95": 11,
+    "max": 14
+   },
+   "busca": {
+    "n": 30,
+    "p50": 5,
+    "p95": 5,
+    "max": 5
+   },
+   "modelo": {
+    "n": 30,
+    "p50": 2268,
+    "p95": 7129,
+    "max": 7222
+   }
+  },
+  "total": {
+   "n": 30,
+   "p50": 2283,
+   "p95": 7148,
+   "max": 7242
+  },
+  "porModelo": {
+   "n": 26,
+   "p50": 2162,
+   "p95": 6360,
+   "max": 6631
+  },
+  "llm": 26,
+  "indicadores": {
+   "habilitado": true,
+   "modelo": "gemini-3.5-flash-lite",
+   "circuito": "FECHADO",
+   "falhasPorMotivo": {
+    "tempo esgotado": 12,
+    "http 503": 7
+   },
+   "latenciaMs": {
+    "p50": 1173,
+    "p95": 3466
+   },
+   "chamadas": 45,
+   "repeticoes": 15,
+   "recusadasPeloCircuito": 1,
+   "acertosCache": 0,
+   "fallbacks": 4,
+   "tokensEntrada": 36881,
+   "tokensSaida": 2272
+  }
+ },
+ "cache": {
+  "n": 30,
+  "p50": 0.4,
+  "p95": 0.5,
+  "max": 0.5
+ },
+ "circuitoAberto": {
+  "n": 30,
+  "p50": 15,
+  "p95": 18,
+  "max": 53
+ },
+ "recomendacao": {
+  "total": {
+   "n": 8,
+   "p50": 3567,
+   "p95": 6665,
+   "max": 6665
+  },
+  "pelo modelo": 6,
+  "tokensEntrada": 17342,
+  "tokensSaida": 1902,
+  "chamadas": 27,
+  "chamadasOk": 21
+ },
+ "tokensPorTriagem": {
+  "entrada": 1418,
+  "saida": 87
+ }
+}

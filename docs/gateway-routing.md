@@ -41,6 +41,8 @@ Os clientes **só** enxergam o Gateway. Serviços de domínio e BFFs ficam em re
 | `GET /api/v1/notificacoes`, `/{id}` | `notificacoes:8004` | 8004 | ✅ JWT | Ambos |
 | `GET /api/v1/notificacoes/alertas` | `notificacoes:8004` | 8004 | ✅ JWT (`gestor`) | Admin |
 | `GET/PUT /api/v1/pacientes/{id}/preferencias-notificacao` | `notificacoes:8004` | 8004 | ✅ JWT | Ambos |
+| `/`, `/assets/*`, `/icone.svg` | `web-paciente:8080` | 8080 | ❌ pública (arquivos) | Web |
+| `/painel`, `/painel/assets/*` | `web-gestor:8080` | 8080 | ❌ pública (arquivos) | Admin |
 | `/health` | o próprio gateway | — | ❌ pública | Operação |
 
 **Lista do que entra:** rota que não está na tabela responde `404`. Os passos da SAGA (`POST /triagens`, `POST /notificacoes`, `/pacientes/{id}/validacao`), `/metricas` e `/ready` só existem na rede interna.
@@ -117,6 +119,7 @@ A ordem importa: **rate limit antes do JWT** protege a validação criptográfic
 |------|-------|
 | Limite | **100 requisições / minuto / IP** |
 | Janela | Fixa de 60 s, contador em **Redis** (consistente entre réplicas do Gateway) |
+| Fora do limite | Arquivos estáticos das telas |
 | Excedido | `429 Too Many Requests` + `Retry-After` (RFC 7807) |
 | Cabeçalhos | `X-RateLimit-Limit-Minute`, `X-RateLimit-Remaining-Minute`, `RateLimit-Reset` |
 | Falha do Redis | `fault_tolerant`: libera (disponibilidade > limite) |

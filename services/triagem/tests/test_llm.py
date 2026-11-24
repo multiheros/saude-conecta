@@ -101,11 +101,11 @@ def cronometrar(f):
 
 
 # --- Chain de classificacao
-def test_classifica_com_trechos_e_cita_os_usados(t, gemini):
-    gemini.modo(resposta={"trechos": [2, 3, 99, 0]})
+def test_classifica_com_trechos_e_cita_os_usados_primeiro(t, gemini):
+    gemini.modo(resposta={"trechos": [3, 2, 3, 99, 0]})
     r = t.classificar(QUEIXA, 30)
     assert (r["classificacao"], r["origem"], r["confianca"]) == ("VERDE", "LLM", 0.9)
-    assert [(f["documento"], f["pagina"]) for f in r["fontes"]] == [("Caderno", 38), ("Protocolo interno SaúdeConecta", None)]
+    assert [(f["documento"], f["pagina"]) for f in r["fontes"]] == [("Protocolo interno SaúdeConecta", None), ("Caderno", 38), ("Caderno", 32)]
     pedido = json.dumps(gemini.pedidos[0], ensure_ascii=False)
     assert "Sinais de alerta da cefaleia." in pedido and "Caderno, p. 32" in pedido  # recuperacao entrou no prompt
     assert "VERMELHO: risco imediato de vida" in pedido and "18 a 59 anos" in pedido
@@ -163,6 +163,13 @@ def test_regra_so_eleva_a_urgencia(t, gemini, sintomas, do_modelo, final):
 def test_pouca_confianca_vira_o_mais_urgente(t, gemini, nivel, confianca, final):
     gemini.modo(resposta={"classificacao": nivel, "confianca": confianca})
     assert t.classificar("sinto algo estranho no corpo", 30)["classificacao"] == final
+
+
+def test_sem_trecho_de_apoio_o_modelo_nao_rebaixa(modelo, gemini):
+    sem_base = Triador(Busca([]), modelo)
+    for do_modelo, final in (("AZUL", "AMARELO"), ("VERDE", "AMARELO"), ("LARANJA", "LARANJA")):
+        gemini.modo(resposta={"classificacao": do_modelo, "confianca": 0.95})
+        assert sem_base.classificar("sinto algo estranho no corpo", 30)["classificacao"] == final
 
 
 def test_especialidade_fixa_nao_e_desfeita(t, gemini):

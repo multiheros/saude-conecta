@@ -1,4 +1,4 @@
-# 🐳 Containerização e Orquestração (Parte 3)
+# 🐳 Containerização e Orquestração
 
 Como o sistema roda em containers (Docker Compose) e no cluster (Kubernetes), e por que cada decisão foi tomada. Instruções de execução no [README](../README.md#-como-executar).
 
@@ -10,6 +10,7 @@ Como o sistema roda em containers (Docker Compose) e no cluster (Kubernetes), e 
 | `triagem` | `python:3.12-slim` | 8003 | 3 (o terceiro baixa o modelo de embeddings, com hash conferido) |
 | `bff-web`, `bff-admin` | `node:22-alpine` | 3001 / 3002 | 2 |
 | `gateway` | `kong:3.9.1` | 8000 | 1 (configuração declarativa e 2 plugins) |
+| `web-paciente`, `web-gestor` | `nginxinc/nginx-unprivileged:1.27-alpine` | 8080 | 2 (o primeiro compila o React) |
 | `rabbitmq` | `rabbitmq:3.13-management-alpine` | 5672 | 1 (filas, DLQs e bindings declarados em `infra/rabbitmq`) |
 
 **Multi-stage — ganho:**
@@ -22,7 +23,7 @@ Pacientes, Agendamento, Notificações e os BFFs compartilham `libs/comum` (banc
 
 ## 2. Docker Compose
 
-`docker-compose.yml` sobe 16 containers com um comando: gateway, 2 BFFs, 4 serviços de domínio, 7 bancos, o contador do gateway e RabbitMQ. Outros dois rodam e terminam: `triagem-ingestao` carrega a base do RAG (1 a 2 min na primeira vez; depois não faz nada) e `chaves` gera o par RSA do JWT. A chave privada fica num volume montado só em Pacientes; nada é versionado.
+`docker-compose.yml` sobe 18 containers com um comando: gateway, 2 telas, 2 BFFs, 4 serviços de domínio, 7 bancos, o contador do gateway e RabbitMQ. Outros dois rodam e terminam: `triagem-ingestao` carrega a base do RAG (1 a 2 min na primeira vez; depois não faz nada) e `chaves` gera o par RSA do JWT. A chave privada fica num volume montado só em Pacientes; nada é versionado.
 
 **Database per Service, instâncias separadas:**
 
@@ -42,7 +43,7 @@ Pacientes, Agendamento, Notificações e os BFFs compartilham `libs/comum` (banc
 
 | Rede | Quem participa | Observação |
 |------|----------------|------------|
-| `frontend` | gateway, BFFs | Única com porta publicada (8080, via gateway) |
+| `frontend` | gateway, telas, BFFs | Única com porta publicada (8080, via gateway) |
 | `backend` | gateway, BFFs, serviços | Tráfego interno entre serviços |
 | `mensageria` | serviços que publicam ou consomem eventos, RabbitMQ | `internal: true` |
 | `data-<serviço>` (4) e `data-gateway` | um serviço (ou o gateway) e os seus bancos | `internal: true`: sem saída externa; nenhum outro serviço, BFF ou gateway alcança aquele banco |
@@ -65,7 +66,7 @@ Credenciais vêm de variáveis de ambiente com valores padrão de desenvolviment
 | `01-configmap.yaml` | URLs entre serviços e host/porta de cada banco |
 | `02-secrets.yaml` | Um Secret por serviço e um do RabbitMQ (valores de desenvolvimento) |
 | `03-bancos.yaml` | 6 StatefulSets + Services headless + PVC de 1Gi cada; o cache de vagas (Redis) é Deployment sem volume |
-| `04-aplicacoes.yaml` | 7 Deployments (2 réplicas) e o contador do gateway + Services, com probes e limites de recursos, e o Job da ingestão do RAG |
+| `04-aplicacoes.yaml` | 9 Deployments (2 réplicas) e o contador do gateway + Services, com probes e limites de recursos, e o Job da ingestão do RAG |
 | `05-rabbitmq.yaml` | StatefulSet + PVC + Service |
 | `06-ingress.yaml` | Ingress único: tudo vai para o gateway (Kong) |
 | `07-networkpolicy.yaml` | Cada banco só aceita conexão do seu serviço; serviços só da borda e de outros serviços; BFFs só do gateway |
@@ -101,16 +102,21 @@ A resposta traz o cabeçalho `X-Instance` (nome do pod), então a distribuição
 
 | Comando | O que prova |
 |---------|-------------|
+| `scripts/e2e.sh` | Todas as provas abaixo, uma por vez, com resumo (~17 min) |
 | `scripts/testar.sh` | Testes dos 2 BFFs e de integração dos 4 serviços contra PostgreSQL, MongoDB, Redis e RabbitMQ descartáveis: SAGA com falha em cada passo, concorrência, compensação, eventos repetidos ou fora de ordem, permissões, DLQ e Outbox |
 | `scripts/verificar_saga.sh` | SAGA na stack real: caminho feliz, compensação em cascata, participante morto, disputa de horário e `kill -9` no orquestrador (~70 s) |
 | `scripts/verificar_cqrs.sh` | CQRS na stack real: escrita aparece na leitura, defasagem medida, MongoDB, Redis ou RabbitMQ fora, Read Model perdido e reconstruído (~90 s) |
 | `scripts/verificar_rag.sh` | RAG na stack real: ingestão sem internet e sem duplicar, busca com página, ChromaDB parado, travado ou perdido (~3 min) |
 | `scripts/verificar_llm.sh` | LLM na stack real, com servidor falso no lugar do provedor: cache, privacidade, tool com a agenda real, provedor travado, circuit breaker e fallback (~3 min) |
 | `scripts/verificar_gateway.sh` | Gateway e BFFs na stack real, só pela porta publicada: JWT, perfis, cabeçalho forjado, fluxo do paciente, painel e limite de requisições (~3 min) |
+| `scripts/verificar_telas.sh` | As duas telas com navegador real, na stack completa: fluxos, compensação visível, acessibilidade (~4 min) |
+| `scripts/verificar_offline.sh` | A stack sobe sem construir nem baixar nada e funciona sem internet |
 | `scripts/verificar_outbox.sh` | Nenhum evento se perde com RabbitMQ parado, `kill -9` ou reinício do broker |
 | `scripts/verificar_isolamento.sh` | Isolamento de rede e senha dos bancos (com a stack no ar) |
 
-## 5. Limitações desta etapa
+`scripts/preparar.sh` baixa e constrói tudo com antecedência, repetindo se o Docker Hub falhar; depois, `docker compose up -d --no-build` não depende dele. As imagens têm o mesmo nome no Compose e no Kubernetes (`saudeconecta/<serviço>:1.0`).
+
+## 5. Limitações
 - Os 4 serviços já usam o próprio banco e RabbitMQ, a SAGA está completa e as consultas do Agendamento vêm do Read Model (CQRS). A **Triagem** usa RAG e LLM; sem a chave do provedor, trabalha por regras.
 - TLS não está habilitado no ambiente local.
-- Os dois clientes (app do paciente e painel do gestor) ainda não existem.
+- Limitações das telas: [`clientes.md`](clientes.md).

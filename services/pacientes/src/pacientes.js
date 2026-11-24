@@ -15,7 +15,7 @@ async function cadastrar(c, ctx, d, senhaHash) {
     `INSERT INTO pacientes (id, nome, cpf, data_nascimento, email, telefone, bairro, ubs_referencia_id, senha_hash)
      VALUES (COALESCE($1, gen_random_uuid()), $2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (cpf) DO NOTHING RETURNING *`,
     [d.id || null, d.nome, d.cpf, d.dataNascimento, d.email, d.telefone || null, d.bairro || null, d.ubsReferenciaId || null, senhaHash]);
-  if (!p) throw new Problema(409, 'CPF ja cadastrado');
+  if (!p) throw new Problema(409, 'CPF já cadastrado');
   await publicarAtualizacao(c, ctx, p);
   return p;
 }
@@ -26,7 +26,7 @@ async function atualizar(c, ctx, id, d) {
             bairro=COALESCE($5,bairro), ubs_referencia_id=COALESCE($6,ubs_referencia_id), version=version+1
       WHERE id=$1 RETURNING *`,
     [id, d.nome, d.email, d.telefone, d.bairro, d.ubsReferenciaId]);
-  if (!p) throw new Problema(404, 'Paciente nao encontrado');
+  if (!p) throw new Problema(404, 'Paciente não encontrado');
   await publicarAtualizacao(c, ctx, p);
   return p;
 }
@@ -35,11 +35,11 @@ async function atualizar(c, ctx, id, d) {
 async function validar(c, id, sagaId) {
   // A trava serializa com a compensacao da mesma SAGA.
   const { rows: [p] } = await c.query('SELECT ativo, agendamento_saga_id FROM pacientes WHERE id=$1 FOR UPDATE', [id]);
-  if (!p) throw new Problema(404, 'Paciente nao encontrado');
+  if (!p) throw new Problema(404, 'Paciente não encontrado');
   if (!p.ativo) throw new Problema(409, 'Paciente inativo');
   const { rowCount: encerrada } = await c.query('SELECT 1 FROM sagas_encerradas WHERE saga_id=$1', [sagaId]);
-  if (encerrada) throw new Problema(409, 'SAGA ja encerrada');
-  if (p.agendamento_saga_id && p.agendamento_saga_id !== sagaId) throw new Problema(409, 'Agendamento em andamento', 'O paciente ja tem um agendamento em andamento.');
+  if (encerrada) throw new Problema(409, 'SAGA já encerrada');
+  if (p.agendamento_saga_id && p.agendamento_saga_id !== sagaId) throw new Problema(409, 'Agendamento em andamento', 'O paciente já tem um agendamento em andamento.');
   await c.query('UPDATE pacientes SET agendamento_saga_id=$2 WHERE id=$1', [id, sagaId]);
 }
 

@@ -1,0 +1,30 @@
+.topo { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; padding: .6rem 1rem; background: var(--superficie); border-bottom: 1px solid var(--borda); }
+.topo .marca { margin: 0; flex: 1; }
+.topo nav { order: 3; display: flex; width: 100%; gap: .2rem; }
+.topo nav a { flex: 1; text-align: center; padding: .6rem .3rem; text-decoration: none; border-bottom: 3px solid transparent; color: var(--suave); font-weight: 600; }
+.topo nav a[aria-current] { color: var(--primaria); border-color: var(--primaria); }
+.sair { font: inherit; background: none; border: 0; color: var(--suave); padding: .5rem; min-height: 44px; cursor: pointer; text-decoration: underline; }
+.pagina { max-width: 640px; margin: 0 auto; padding: 1.2rem 1rem 3rem; }
+.pagina a.botao { display: inline-block; text-decoration: none; }
+.acoes { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1rem 0; }
+.consulta { display: grid; gap: .15rem; margin-bottom: .8rem; color: inherit; text-decoration: none; }
+.etiqueta { justify-self: start; display: inline-block; margin-bottom: .4rem; font-size: .85rem; font-weight: 600; padding: .1rem .6rem; border-radius: 99px; border: 1px solid var(--borda); background: var(--info-fundo); }
+.s-cancelado, .s-faltou { background: var(--perigo-fundo); } .s-pendente { background: var(--aviso-fundo); }
+.urgencia { border-left: 8px solid; padding: .5rem .8rem; background: var(--fundo); border-radius: 6px; }
+.u-vermelho { border-color: #d03b3b; } .u-laranja { border-color: #ec835a; } .u-amarelo { border-color: #fab219; } .u-verde { border-color: #0ca30c; } .u-azul { border-color: #2a78d6; }
+.resultado { margin: 1rem 0; } .emergencia { border: 2px solid var(--perigo); background: var(--perigo-fundo); }
+.horarios { border: 0; padding: 0; margin: 0; display: grid; gap: .5rem; max-height: 60vh; overflow: auto; }
+.horario { display: flex; gap: .8rem; align-items: center; margin: 0; font-weight: 400; border: 1px solid var(--borda); border-radius: 10px; background: var(--superficie); padding: .6rem .9rem; cursor: pointer; }
+.horario:has(input:checked) { border-color: var(--primaria); box-shadow: inset 0 0 0 1px var(--primaria); }
+.horario input { width: 22px; min-height: 22px; margin: 0; flex: none; accent-color: var(--primaria); }
+.fontes { margin-top: .5rem; } .fontes summary { cursor: pointer; padding: .4rem 0; } .fontes li { font-size: .9rem; }
+.passos { list-style: none; padding: 0; margin: 1.2rem 0; display: grid; gap: .8rem; }
+.passos li { display: flex; gap: .8rem; align-items: center; }
+.bola { width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 700; border: 2px solid var(--borda); background: var(--superficie); }
+.p-concluido .bola { background: var(--primaria); border-color: var(--primaria); color: var(--primaria-texto); }
+.p-falhou .bola { border-color: var(--perigo); color: var(--perigo); } .p-desfeito .bola { border-color: #b98200; }
+.p-aguardando .bola { animation: pulsar 1.2s infinite; }
+@keyframes pulsar { 50% { opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .p-aguardando .bola { animation: none; } }
+dl { display: grid; grid-template-columns: auto 1fr; gap: .2rem .9rem; margin: .6rem 0; } dt { color: var(--suave); } dd { margin: 0; }
+.oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

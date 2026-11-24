@@ -41,22 +41,22 @@ function criarRotas({ pool, chavePrivada }) {
   // Comparado quando o CPF nao existe, para o tempo de resposta nao revelar quem tem cadastro.
   const hashFalso = gerarHash('x');
 
-  r.param('id', (req, _res, next, id) => next(UUID.test(id) ? undefined : new Problema(404, 'Paciente nao encontrado')));
+  r.param('id', (req, _res, next, id) => next(UUID.test(id) ? undefined : new Problema(404, 'Paciente não encontrado')));
   const sagaDe = (req) => {
     const s = req.get('X-Saga-Id');
-    if (!UUID.test(s)) throw new Problema(400, 'X-Saga-Id obrigatorio');
+    if (!UUID.test(s)) throw new Problema(400, 'X-Saga-Id obrigatório');
     return s;
   };
 
   r.post('/auth/login', rota(async (req, res) => {
     const { cpf, senha } = req.body;
-    if (typeof cpf !== 'string' || typeof senha !== 'string' || senha.length > 200) throw new Problema(401, 'Credenciais invalidas');
+    if (typeof cpf !== 'string' || typeof senha !== 'string' || senha.length > 200) throw new Problema(401, 'Credenciais inválidas');
     const { rows: [u] } = await pool.query(
       `SELECT id, senha_hash, 'paciente' AS role FROM pacientes WHERE cpf=$1 AND ativo
        UNION ALL SELECT id, senha_hash, 'gestor' FROM gestores WHERE cpf=$1 AND ativo
        ORDER BY role LIMIT 1`, [cpf]);
     const ok = await conferir(senha, u ? u.senha_hash : await hashFalso);
-    if (!u || !ok) throw new Problema(401, 'Credenciais invalidas');
+    if (!u || !ok) throw new Problema(401, 'Credenciais inválidas');
     // `iss` por perfil: e a chave que o gateway usa para escolher o consumidor e suas rotas.
     const accessToken = jwt.sign({ role: u.role }, chavePrivada, { algorithm: 'RS256', subject: u.id, issuer: `saudeconecta-${u.role}`, audience: 'saudeconecta', expiresIn: EXPIRA_EM });
     res.set('Cache-Control', 'no-store').json({ accessToken, tokenType: 'Bearer', expiresIn: EXPIRA_EM });
@@ -65,7 +65,7 @@ function criarRotas({ pool, chavePrivada }) {
   r.post('/pacientes', rota(async (req, res) => {
     const d = req.body;
     validarCampos(d, true);
-    if (!cpfValido(d.cpf)) throw invalido('cpf invalido.');
+    if (!cpfValido(d.cpf)) throw invalido('cpf inválido.');
     if (!dataValida(d.dataNascimento)) throw invalido('dataNascimento deve ser AAAA-MM-DD e anterior a hoje.');
     if (!texto(d.senha, 8, 200)) throw invalido('senha deve ter de 8 a 200 caracteres.');
     const hash = await gerarHash(d.senha);
@@ -76,7 +76,7 @@ function criarRotas({ pool, chavePrivada }) {
   r.get('/pacientes', rota(async (req, res) => {
     exigirPerfil(req, 'gestor');
     const page = Number(req.query.page || 1), size = Number(req.query.size || 20);
-    if (!inteiro(page, 1, 1e6) || !inteiro(size, 1, 100)) throw new Problema(400, 'Parametros invalidos', 'page >= 1 e size de 1 a 100.');
+    if (!inteiro(page, 1, 1e6) || !inteiro(size, 1, 100)) throw new Problema(400, 'Parâmetros inválidos', 'page >= 1 e size de 1 a 100.');
     const { rows } = await pool.query('SELECT * FROM pacientes ORDER BY nome, id LIMIT $1 OFFSET $2', [size, (page - 1) * size]);
     const { rows: [{ total }] } = await pool.query('SELECT count(*)::int AS total FROM pacientes');
     res.json({ items: rows.map(representar), page, size, total });
@@ -84,14 +84,14 @@ function criarRotas({ pool, chavePrivada }) {
 
   r.get('/pacientes/estatisticas', rota(async (req, res) => {
     exigirPerfil(req, 'gestor');
-    if (!UUID.test(req.query.ubsId)) throw new Problema(400, 'Parametros invalidos', 'ubsId e obrigatorio.');
+    if (!UUID.test(req.query.ubsId)) throw new Problema(400, 'Parâmetros inválidos', 'ubsId é obrigatório.');
     res.json(await dominio.estatisticas(pool, req.query.ubsId));
   }));
 
   r.get('/pacientes/:id', rota(async (req, res) => {
     exigirDono(req, req.params.id);
     const { rows: [p] } = await pool.query('SELECT * FROM pacientes WHERE id=$1', [req.params.id]);
-    if (!p) throw new Problema(404, 'Paciente nao encontrado');
+    if (!p) throw new Problema(404, 'Paciente não encontrado');
     res.json(representar(p));
   }));
 
@@ -104,7 +104,7 @@ function criarRotas({ pool, chavePrivada }) {
   r.get('/pacientes/:id/historico', rota(async (req, res) => {
     exigirDono(req, req.params.id);
     const { rowCount } = await pool.query('SELECT 1 FROM pacientes WHERE id=$1', [req.params.id]);
-    if (!rowCount) throw new Problema(404, 'Paciente nao encontrado');
+    if (!rowCount) throw new Problema(404, 'Paciente não encontrado');
     const { rows } = await pool.query('SELECT agendamento_id AS "agendamentoId", data, especialidade, ubs, status FROM atendimentos WHERE paciente_id=$1 ORDER BY data DESC LIMIT 100', [req.params.id]);
     res.json(rows);
   }));

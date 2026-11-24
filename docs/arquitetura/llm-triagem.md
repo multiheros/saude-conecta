@@ -31,7 +31,7 @@ flowchart LR
 ## Segurança e privacidade
 
 - **A regra só eleva:** sinais de alarme reconhecidos por regra aumentam a urgência do modelo, nunca diminuem. Vale também para resposta vinda do cache.
-- **Pouca confiança** (abaixo de 0,5): o nível passa a no mínimo AMARELO.
+- **Dúvida:** com confiança abaixo de 0,5, ou sem nenhum trecho de apoio na base, o nível passa a no mínimo AMARELO.
 - **O que sai para o provedor:** queixa e faixa etária. Nome, CPF, id e idade exata não são enviados; CPF, telefone, e-mail e "meu nome é..." escritos na queixa são removidos. A remoção é por padrão de texto: um nome solto no meio da frase pode passar.
 - **Instruções na queixa:** o texto vai entre marcas, como dado; mesmo que o modelo obedeça, as regras e a validação continuam valendo.
 - **Remédio e dose:** texto com cara de prescrição é trocado por uma orientação padrão.
@@ -68,9 +68,9 @@ A chave fica no `.env` local, nunca no repositório. Na camada gratuita o proved
 scripts/verificar_llm.sh   # prova tudo acima na stack real, sem chave (~3 min)
 ```
 
-O script e os testes usam o cliente real do Gemini contra um [servidor falso](../../services/triagem/tests/gemini_falso.py) que fala a mesma API: provam a integração e as falhas, **não a qualidade do modelo**, que será medida com a chave.
+O script e os testes usam o cliente real do Gemini contra um [servidor falso](../../services/triagem/tests/gemini_falso.py) que fala a mesma API: provam a integração e as falhas, **não a qualidade do modelo**, medida em [`rag-avaliacao.md`](../rag-avaliacao.md).
 
 ## Limitações
-- Ainda não exercitado com o provedor real; latência, custo e qualidade serão medidos na avaliação.
+- A camada gratuita permite 15 chamadas por minuto e oscila: há picos de demora e erros 503. Medidas em [`llm-latencia-custo.md`](../llm-latencia-custo.md).
 - Circuito e indicadores são por réplica e zeram ao reiniciar.
-- A lista de sinais de alarme é do grupo, sem validação clínica, e não reconhece toda forma de descrever um sintoma.
+- A lista de sinais de alarme é do grupo, sem validação clínica, e não reconhece toda forma de descrever um sintoma: sozinhas, as regras são bem mais fracas que o modelo ([avaliação](../rag-avaliacao.md)).

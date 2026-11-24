@@ -119,7 +119,7 @@ test('reagendamento antigo que chega atrasado nao sobrepoe o mais novo', async (
   const ativas = await loja.doPaciente(d.pacienteId, 'AGENDADA');
   assert.equal(ativas.length, 3);
   assert.equal(ativas[2].enviarEm, new Date(new Date(novo.dataConsulta) - 2 * H).toISOString());
-  assert.equal((await loja.doPaciente(d.pacienteId)).length, 6, 'evento repetido nao pode criar mais');
+  assert.equal((await loja.doPaciente(d.pacienteId)).length, 6, 'evento repetido não pode criar mais');
 });
 
 test('preferencias definem canal e antecedencia', async () => {

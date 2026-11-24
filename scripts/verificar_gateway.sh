@@ -9,6 +9,8 @@
 # Uso: scripts/verificar_gateway.sh      (~3 min; usa a porta 18080)
 set -uo pipefail
 cd "$(dirname "$0")/.."
+export GEMINI_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
+BUILD=--build; [ -n "${SEM_BUILD:-}" ] && BUILD=--no-build # SEM_BUILD=1: usa as imagens ja prontas
 export COMPOSE_PROJECT_NAME=saudeconecta-gateway GATEWAY_PORTA=${GATEWAY_PORTA:-18080} LIMITE_POR_MINUTO=5000 CACHE_SEGUNDOS=0
 G=http://127.0.0.1:$GATEWAY_PORTA
 dc() { docker compose "$@" 2>/dev/null; }
@@ -27,7 +29,7 @@ token() { dc exec -T pacientes node -e "const jwt=require('jsonwebtoken'),fs=req
 OK="algorithm:'RS256',subject:'$P1',issuer:'saudeconecta-paciente',audience:'saudeconecta',expiresIn:600"
 
 echo "0. Subindo a stack"
-docker compose up -d --build gateway bff-web bff-admin agendamento pacientes triagem notificacoes rabbitmq db-agendamento-leitura cache-agendamento cache-gateway >/dev/null 2>&1 || falha "nao subiu"
+SUBIDA=$(docker compose up -d $BUILD gateway bff-web bff-admin agendamento pacientes triagem notificacoes rabbitmq db-agendamento-leitura cache-agendamento cache-gateway 2>&1) || falha "nao subiu: $(grep -iE 'error|unhealthy|failed' <<< "$SUBIDA" | tail -3)"
 espera "cod $G/health" 200; espera "login 10000000108 | cut -c1-3" eyJ
 PAC=$(login 10000000108); GES=$(login 90000000175); AP="Authorization: Bearer $PAC"; AG="Authorization: Bearer $GES"
 [ -n "$GES" ] || falha "login da gestora"
@@ -89,7 +91,7 @@ igual "sem dado pessoal" "$(curl -s -H "$AG" "$RES" | grep -ciE 'cpf|email|telef
 dc stop notificacoes >/dev/null
 igual "Notificacoes fora: resposta parcial, sem erro" "$(curl -s -H "$AG" "$RES" | campo "j.parcial+' '+j.alertas+' '+(j.capacidade.slotsTotais>0)")" "true null true"
 dc stop triagem >/dev/null
-igual "Triagem fora: 503 no formato padrao" "$(curl -s -X POST -H "$AP" -H 'content-type: application/json' -d "$Q" $G/web/v1/triagem | campo "j.status+' '+j.title")" "503 Servico indisponivel"
+igual "Triagem fora: 503 no formato padrao" "$(curl -s -X POST -H "$AP" -H 'content-type: application/json' -d "$Q" $G/web/v1/triagem | campo "j.status+' '+j.title")" "503 Serviço indisponível"
 igual "e a home continua abrindo" "$(cod -H "$AP" $G/web/v1/home)" 200
 
 echo "6. Limite de requisicoes"

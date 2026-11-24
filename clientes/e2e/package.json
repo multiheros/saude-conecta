@@ -1,0 +1,7 @@
+{
+  "name": "saudeconecta-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "devDependencies": { "@axe-core/playwright": "4.14.1", "@playwright/test": "1.65.1" }
+}

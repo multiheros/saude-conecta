@@ -13,7 +13,7 @@ function criarRotas(env = process.env) {
   const PAC = `${env.PACIENTES_URL}/api/v1`, AGE = `${env.AGENDAMENTO_URL}/api/v1`, TRI = `${env.TRIAGEM_URL}/api/v1`;
   const r = express.Router();
   r.use(exigir('paciente'));
-  r.param('id', (_req, _res, next, id) => next(UUID.test(id) ? undefined : new Problema(404, 'Agendamento nao encontrado')));
+  r.param('id', (_req, _res, next, id) => next(UUID.test(id) ? undefined : new Problema(404, 'Agendamento não encontrado')));
   const eu = (req) => req.get('X-User-Id');
   const paciente = (req) => pedir(req, 'GET', `${PAC}/pacientes/${eu(req)}`);
   const link = (href, method = 'GET') => ({ href: BASE + href, method });
@@ -47,7 +47,7 @@ function criarRotas(env = process.env) {
   r.post('/triagem', rota(async (req, res) => {
     const { sintomas } = req.body || {};
     const p = await paciente(req);
-    if (!p.ubsReferenciaId) throw new Problema(409, 'Sem unidade de referencia', 'Procure uma UBS para vincular o seu cadastro.');
+    if (!p.ubsReferenciaId) throw new Problema(409, 'Sem unidade de referência', 'Procure uma UBS para vincular o seu cadastro.');
     const x = await pedir(req, 'POST', `${TRI}/triagens/recomendacoes`, { corpo: { sintomas, idade: t.idade(p.dataNascimento), ubsId: p.ubsReferenciaId }, timeoutMs: TEMPO_TRIAGEM });
     res.json({
       urgencia: t.urgencia(x.classificacao), justificativa: x.justificativa, especialidade: x.especialidadeSugerida, orientacao: x.orientacao,
@@ -59,7 +59,7 @@ function criarRotas(env = process.env) {
 
   r.get('/horarios', rota(async (req, res) => {
     const p = await paciente(req);
-    if (!p.ubsReferenciaId) throw new Problema(409, 'Sem unidade de referencia', 'Procure uma UBS para vincular o seu cadastro.');
+    if (!p.ubsReferenciaId) throw new Problema(409, 'Sem unidade de referência', 'Procure uma UBS para vincular o seu cadastro.');
     const q = new URLSearchParams({ ubsId: p.ubsReferenciaId });
     for (const k of ['especialidade', 'dataInicio', 'dataFim']) if (typeof req.query[k] === 'string') q.set(k, req.query[k]);
     const [slots, profs] = await Promise.all([pedir(req, 'GET', `${AGE}/slots?${q}`), opcional(pedir(req, 'GET', `${AGE}/profissionais`))]);

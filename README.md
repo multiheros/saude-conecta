@@ -2,9 +2,9 @@
 
 > *Conectando comunidades à saúde que precisam*
 
-`GCC129 — Sistemas Distribuídos` · `UFLA · 2026/2` · `Parte 3 — Containerização e Orquestração`
+`GCC129 — Sistemas Distribuídos` · `UFLA · 2026/2` · `Parte 4 — Sistema em Funcionamento`
 
-**[📖 Visão geral](#-visão-geral)** · **[🏗️ Arquitetura](ARCHITECTURE.md)** · **[📂 Documentação](docs/)** · **[🚀 Como executar](#-como-executar)** · **[🎬 Vídeo da Parte 3](https://youtu.be/KnB0XyP8xoM)**
+**[📖 Visão geral](#-visão-geral)** · **[🏗️ Arquitetura](ARCHITECTURE.md)** · **[📂 Documentação](docs/)** · **[🚀 Como executar](#-como-executar)** · **[🎬 Demonstração](docs/demonstracao.md)**
 
 **Repositório:** [github.com/multiheros/saude-conecta](https://github.com/multiheros/saude-conecta)
 
@@ -173,10 +173,10 @@ O **SaúdeConecta** é uma plataforma de **agendamento inteligente e triagem ass
 
 | Camada | Tecnologia |
 |--------|-----------|
-| Serviços de domínio | Python (FastAPI) + Node.js (NestJS/Express) |
+| Serviços de domínio | Python (FastAPI) + Node.js (Express) |
 | Bancos de dados | PostgreSQL · MongoDB · Redis · ChromaDB |
-| Mensageria | RabbitMQ |
-| IA | LLM + RAG (LangChain + ChromaDB) |
+| Mensageria | RabbitMQ (topic exchange + DLQ) |
+| IA | LLM (Gemini Flash-Lite) + RAG (LangChain + ChromaDB, embeddings locais) |
 | API Gateway / BFFs | Kong + 2 BFFs (web e admin) |
 | Frontends | React (app do paciente + painel do gestor) |
 | Infra | Docker + Docker Compose + Kubernetes |
@@ -218,15 +218,7 @@ graph LR
 
 ## 🚀 Como Executar
 
-### 🎬 Vídeo da Parte 3
-
-Demonstração do sistema sendo levantado com Docker Compose e Kubernetes (Dockerfiles, redes, volumes, ConfigMap/Secret, Ingress e escalabilidade):
-
-**[▶️ Assistir no YouTube](https://youtu.be/KnB0XyP8xoM)**
-
-> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A Parte 4, em andamento, substitui esses dados pela lógica real, e já cobre os 4 serviços com banco próprio, eventos, JWT, a **SAGA** completa, o **CQRS** do Agendamento a Triagem com **RAG** e **LLM**, e o gateway **Kong** com JWT.
-
-**Requisitos:** Docker 24+ com Compose v2. Para Kubernetes: `kubectl` e [`kind`](https://kind.sigs.k8s.io).
+**Requisitos:** Docker 24+ com Compose v2, Bash e 4 GB de memória livre (a stack ocupa cerca de 1,7 GB em repouso e mais 1 GB enquanto carrega a base do RAG). Para Kubernetes: `kubectl` e [`kind`](https://kind.sigs.k8s.io). Nada mais precisa ser instalado: testes e ferramentas rodam em containers.
 
 ### Docker Compose (um comando)
 
@@ -234,9 +226,22 @@ Demonstração do sistema sendo levantado com Docker Compose e Kubernetes (Docke
 docker compose up -d --build
 ```
 
+Para subir depois sem internet e sem depender do Docker Hub: `scripts/preparar.sh` uma vez e, dali em diante, `docker compose up -d --no-build`.
+
 Para usar o LLM na triagem, copie `.env.example` para `.env` e preencha `GEMINI_API_KEY` antes de subir. Sem a chave, a triagem funciona por regras.
 
-Entrada única pelo gateway: `http://localhost:8080`
+Entrada única pelo gateway:
+
+| Cliente | Endereço | Acesso fictício |
+|---------|----------|-----------------|
+| App do paciente | http://localhost:8080 | CPF `10000000108`, senha `demo12345` |
+| Painel do gestor | http://localhost:8080/painel | CPF `90000000175`, senha `demo12345` |
+
+```bash
+scripts/demo/dados.sh   # opcional: enche a agenda com dados fictícios, pela API real
+```
+
+Pela linha de comando:
 
 ```bash
 # Paciente fictício 10000000108; gestora 90000000175 (troque o CPF e a rota)
@@ -254,33 +259,23 @@ docker compose down -v     # para e apaga os volumes
 ### Kubernetes (kind)
 
 ```bash
-# 1. cluster local com o Ingress exposto em http://localhost:8081
-kind create cluster --config k8s/cluster/kind-config.yaml
-
-# 2. imagens (build local e carga no cluster)
-for s in pacientes agendamento notificacoes; do docker build -t saudeconecta/$s:1.0 -f services/$s/Dockerfile .; done
-docker build -t saudeconecta/triagem:1.0 services/triagem
-for b in web admin; do docker build -t saudeconecta/bff-$b:1.0 -f bff/$b/Dockerfile .; done
-docker build -t saudeconecta/gateway:1.0 gateway
-docker build -t saudeconecta/rabbitmq:1.0 infra/rabbitmq
-for i in pacientes agendamento triagem notificacoes bff-web bff-admin gateway rabbitmq; do kind load docker-image saudeconecta/$i:1.0 --name saudeconecta; done
-
-# 3. Ingress controller
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml
-kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=180s
-
-# 4. aplicação
-kubectl apply -f k8s/00-namespace.yaml
-scripts/k8s-chaves.sh            # par de chaves do JWT, gerado na hora
-kubectl apply -f k8s/
-kubectl -n saudeconecta get pods
-
-# 5. teste e escalabilidade
-curl http://localhost:8081/web/v1/home
-kubectl -n saudeconecta scale deploy/bff-web --replicas=4
+scripts/k8s-subir.sh     # cluster kind, Ingress, imagens, chaves e manifestos; http://localhost:8081
 ```
 
-Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, imagens e manifestos em [`docs/containerizacao.md`](docs/containerizacao.md).
+Com um comando: cria o cluster se não existir, constrói e carrega as imagens, gera as chaves do JWT e espera tudo ficar pronto. Se houver `GEMINI_API_KEY` no `.env`, cria o Secret do LLM. `CLUSTER=` e `PORTA=` mudam o nome e a porta.
+
+### Provas
+
+```bash
+scripts/e2e.sh          # todas, com resumo: testes, isolamento, Outbox, SAGA, CQRS, RAG, LLM, gateway, telas, offline (~18 min)
+scripts/demo/5-falha.sh # uma cena da demonstração: SAGA com falha e compensação
+```
+
+As cenas e o plano B estão em [`docs/demonstracao.md`](docs/demonstracao.md).
+
+### Limpeza
+
+`kind delete cluster --name saudeconecta`; `docker compose down -v`. Detalhes de redes, volumes, imagens e manifestos em [`docs/containerizacao.md`](docs/containerizacao.md).
 
 ---
 
@@ -290,8 +285,8 @@ Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, 
 |-------|--------|------|
 | **Parte 1** — Concepção e Pitch | 🟢 Concluída | 17/09/2026 |
 | **Parte 2** — Arquitetura | 🟢 Concluída | 22–27/10/2026 |
-| **Parte 3** — Containerização e K8s | 🟢 Concluída | 17/11/2026 |
-| **Parte 4** — Sistema Funcional | ⬜ Pendente | 10–15/12/2026 |
+| **Parte 3** — Containerização e K8s ([vídeo](https://youtu.be/KnB0XyP8xoM)) | 🟢 Concluída | 17/11/2026 |
+| **Parte 4** — Sistema em Funcionamento | 🟡 Pronta para apresentação | 10–15/12/2026 |
 
 ---
 
@@ -309,7 +304,8 @@ Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, 
 
 | Documento | Descrição |
 |-----------|-----------|
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Visão de arquitetura (Parte 2)** — ponto de partida |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Visão de arquitetura** — ponto de partida; requisitos das Partes 2 e 4 e onde estão |
+| [`docs/containerizacao.md`](docs/containerizacao.md) | Imagens, redes, volumes, Kubernetes e provas *(Partes 3 e 4)* |
 | [`docs/parte1_concepcao.md`](docs/parte1_concepcao.md) | Concepção, problema, impacto social e referências (Parte 1) |
 | [`docs/arquitetura/decomposicao-microsservicos.md`](docs/arquitetura/decomposicao-microsservicos.md) | Bounded Contexts (DDD), componentes e comunicação REST/RabbitMQ *(Parte 2)* |
 | [`docs/arquitetura/saga-agendamento.md`](docs/arquitetura/saga-agendamento.md) | SAGA orquestrada e fluxo compensatório *(Parte 2)* |
@@ -319,9 +315,12 @@ Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, 
 | [`docs/api/`](docs/api/) | Contratos OpenAPI dos 4 serviços *(Parte 2)* |
 | [`docs/decisoes-tecnicas/api-guidelines.md`](docs/decisoes-tecnicas/api-guidelines.md) | Versionamento por URI e HATEOAS *(Parte 2)* |
 | [`docs/decisoes-tecnicas/outbox-e-consistencia.md`](docs/decisoes-tecnicas/outbox-e-consistencia.md) | Consistência eventual, Dual Write e Transactional Outbox *(Parte 2)* |
-| [`docs/arquitetura/rag-triagem.md`](docs/arquitetura/rag-triagem.md) | RAG da Triagem: base, embeddings, ChromaDB e recuperação |
-| [`docs/arquitetura/llm-triagem.md`](docs/arquitetura/llm-triagem.md) | LLM da Triagem: chains, tool, resiliência e privacidade |
-| `docs/rag-avaliacao.md` | Avaliação do pipeline RAG *(Parte 4)* |
+| [`docs/demonstracao.md`](docs/demonstracao.md) | Cenas da demonstração, preparo e plano B *(Parte 4)* |
+| [`docs/clientes.md`](docs/clientes.md) | App do paciente e painel do gestor *(Parte 4)* |
+| [`docs/arquitetura/rag-triagem.md`](docs/arquitetura/rag-triagem.md) | RAG da Triagem: base, embeddings, ChromaDB e recuperação *(Parte 4)* |
+| [`docs/arquitetura/llm-triagem.md`](docs/arquitetura/llm-triagem.md) | LLM da Triagem: chains, tool, resiliência e privacidade *(Parte 4)* |
+| [`docs/rag-avaliacao.md`](docs/rag-avaliacao.md) | Avaliação do RAG: 12 perguntas, com e sem recuperação *(Parte 4)* |
+| [`docs/llm-latencia-custo.md`](docs/llm-latencia-custo.md) | Latência e custo do LLM, medidos *(Parte 4)* |
 
 ---
 
@@ -338,6 +337,11 @@ Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, 
 
 5. **CFM / APM** (2024). Dados sobre tempo de espera para consultas especializadas no SUS. *Conselho Federal de Medicina / Associação Paulista de Medicina.*
 6. **OMS/OPAS** (2023). Relatórios sobre cobertura de saúde nas Américas.
+
+### Base de conhecimento da triagem
+
+7. **BRASIL. Ministério da Saúde** (2013). *Acolhimento à demanda espontânea.* Cadernos de Atenção Básica, n. 28, v. I. Brasília. [PDF](https://bvsms.saude.gov.br/bvs/publicacoes/acolhimento_demanda_espontanea_cab28v1.pdf)
+8. **BRASIL. Ministério da Saúde** (2013). *Acolhimento à demanda espontânea: queixas mais comuns na Atenção Básica.* Cadernos de Atenção Básica, n. 28, v. II. Brasília. [PDF](https://bvsms.saude.gov.br/bvs/publicacoes/acolhimento_demanda_espontanea_queixas_comuns_cab28v2.pdf)
 
 ---
 

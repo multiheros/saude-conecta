@@ -8,6 +8,8 @@
 # Uso: scripts/verificar_saga.sh
 set -uo pipefail
 cd "$(dirname "$0")/.."
+export GEMINI_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
+BUILD=--build; [ -n "${SEM_BUILD:-}" ] && BUILD=--no-build # SEM_BUILD=1: usa as imagens ja prontas
 export COMPOSE_PROJECT_NAME=saudeconecta-saga
 dc() { docker compose "$@" 2>/dev/null; }
 trap 'dc down -v >/dev/null' EXIT
@@ -31,7 +33,7 @@ espera() { for _ in $(seq 60); do [ "$(eval "$1")" = "$2" ] && return; sleep 0.2
 pronto() { for _ in $(seq 100); do [ "$(js "try{console.log((await fetch('http://$1/ready')).status)}catch{}")" = 200 ] && return; sleep 0.3; done; falha "$1 nao ficou pronto"; }
 
 echo "0. Subindo os quatro servicos"
-docker compose up -d --build agendamento pacientes triagem notificacoes rabbitmq >/dev/null 2>&1 || falha "nao subiu"
+SUBIDA=$(docker compose up -d $BUILD agendamento pacientes triagem notificacoes rabbitmq 2>&1) || falha "nao subiu: $(grep -iE 'error|unhealthy|failed' <<< "$SUBIDA" | tail -3)"
 for s in 127.0.0.1:8002 pacientes:8001 triagem:8003 notificacoes:8004; do pronto $s; done
 ok "prontos"
 

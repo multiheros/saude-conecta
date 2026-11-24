@@ -63,7 +63,7 @@ test('home mostra so os ativos e abre mesmo com Agendamento fora', async () => {
 test('detalhe abre sem a Triagem; sem Agendamento, 503; travado, 504', async () => {
   d.respostas['GET /api/v1/triagens'] = [500, {}];
   assert.equal((await c.pedir('GET', `/agendamentos/${AG}`)).corpo.triagem, undefined);
-  d.respostas[`GET /api/v1/agendamentos/${AG}`] = [503, { title: 'Consulta indisponivel' }];
+  d.respostas[`GET /api/v1/agendamentos/${AG}`] = [503, { title: 'Consulta indisponível' }];
   const r = await c.pedir('GET', `/agendamentos/${AG}`);
   assert.deepEqual([r.status, r.headers.get('content-type').split(';')[0]], [503, 'application/problem+json']);
   d.atraso[`GET /api/v1/pacientes/${EU}`] = 4000;
@@ -79,9 +79,9 @@ test('agendar usa o cadastro, e nao o que vier no corpo', async () => {
 });
 
 test('recusa do dominio volta com o mesmo status e mensagem', async () => {
-  d.respostas[`POST /api/v1/agendamentos/${AG}/confirmacao`] = [409, { title: 'Transicao de estado invalida', detail: 'Agendamento CANCELADO.' }];
+  d.respostas[`POST /api/v1/agendamentos/${AG}/confirmacao`] = [409, { title: 'Transição de estado inválida', detail: 'Agendamento CANCELADO.' }];
   const r = await c.pedir('POST', `/agendamentos/${AG}/confirmacao`);
-  assert.deepEqual([r.status, r.corpo.title, r.corpo.detail], [409, 'Transicao de estado invalida', 'Agendamento CANCELADO.']);
+  assert.deepEqual([r.status, r.corpo.title, r.corpo.detail], [409, 'Transição de estado inválida', 'Agendamento CANCELADO.']);
   assert.equal((await c.pedir('GET', '/agendamentos/nao-e-uuid')).status, 404);
   assert.equal((await c.pedir('POST', `/agendamentos/${AG}/comparecimento`)).status, 404); // acao do gestor
 });

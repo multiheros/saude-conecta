@@ -6,9 +6,9 @@ local cjson = require "cjson.safe"
 local jwt_parser = require "kong.plugins.jwt.jwt_parser"
 
 local TITULOS = {
-  [400] = "Requisicao invalida", [401] = "Nao autenticado", [403] = "Sem permissao", [404] = "Rota nao encontrada",
-  [413] = "Corpo grande demais", [429] = "Limite de requisicoes excedido",
-  [502] = "Servico indisponivel", [503] = "Servico indisponivel", [504] = "Servico nao respondeu a tempo",
+  [400] = "Requisição inválida", [401] = "Não autenticado", [403] = "Sem permissão", [404] = "Rota não encontrada",
+  [413] = "Corpo grande demais", [429] = "Limite de requisições excedido",
+  [502] = "Serviço indisponível", [503] = "Serviço indisponível", [504] = "Serviço não respondeu a tempo",
 }
 local UUID = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
 

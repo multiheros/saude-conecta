@@ -1,0 +1,7 @@
+# Usado so por scripts/verificar_offline.sh: sem saida para a internet nos servicos (nem com chave o LLM responde).
+services:
+  triagem:
+    environment: { GEMINI_API_KEY: chave-sem-rede }
+networks:
+  backend:
+    internal: true

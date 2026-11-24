@@ -12,11 +12,11 @@ const agenda = require('./agenda');
 
 const NOMES = { 1: '1-triagem', 2: '2-pacientes', 3: '3-reserva', 4: '4-notificacoes' };
 const MOTIVO = {
-  EMERGENCIA: 'Sintomas de emergencia: procure atendimento imediato ou ligue 192 (SAMU).',
-  SLOT: 'O horario escolhido acabou de ser ocupado. Escolha outro.',
-  EM_ANDAMENTO: 'Voce ja tem um agendamento em andamento. Aguarde a conclusao.',
-  RECUSADO: 'Nao foi possivel validar os dados do agendamento.',
-  INDISPONIVEL: 'Nao foi possivel concluir o agendamento agora. Tente novamente em instantes.',
+  EMERGENCIA: 'Sintomas de emergência: procure atendimento imediato ou ligue 192 (SAMU).',
+  SLOT: 'O horário escolhido acabou de ser ocupado. Escolha outro.',
+  EM_ANDAMENTO: 'Você já tem um agendamento em andamento. Aguarde a conclusão.',
+  RECUSADO: 'Não foi possível validar os dados do agendamento.',
+  INDISPONIVEL: 'Não foi possível concluir o agendamento agora. Tente novamente em instantes.',
 };
 const ATIVOS = "('EM_ANDAMENTO','COMPENSANDO','COMPENSACAO_PENDENTE')";
 
@@ -228,7 +228,7 @@ function criarOrquestrador({ pool, env = process.env, config = {} }) {
   async function iniciar(correlationId, { pacienteId, slotId, sintomas, idade, chave }) {
     const r = await transacao(pool, async (c) => {
       const { rowCount } = await c.query('SELECT 1 FROM slots WHERE id=$1', [slotId]);
-      if (!rowCount) throw new Problema(422, 'Dados invalidos', 'Horario inexistente.');
+      if (!rowCount) throw new Problema(422, 'Dados inválidos', 'Horário inexistente.');
       const { rows: [s] } = await c.query(
         `INSERT INTO saga_instances (id, agendamento_id, paciente_id, slot_id, sintomas, idade, correlation_id, chave_idempotencia)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (paciente_id, chave_idempotencia) DO NOTHING RETURNING *`,

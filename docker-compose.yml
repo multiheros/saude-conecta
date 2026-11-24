@@ -1,5 +1,6 @@
 # SaudeConecta - stack completa
-# Sobe tudo com:  docker compose up -d --build
+# Sobe tudo com:          docker compose up -d --build
+# Ja preparado e offline:  docker compose up -d --no-build   (antes: scripts/preparar.sh)
 # Entrada unica: http://localhost:8080
 
 x-node-service: &svc-defaults
@@ -9,6 +10,7 @@ services:
   # ---------- Borda ----------
   # Kong sem banco. Valida o JWT com a chave publica; a privada so existe em Pacientes.
   gateway:
+    image: saudeconecta/gateway:${IMAGENS_TAG:-1.0}
     build: ./gateway
     <<: *svc-defaults
     ports: ["${GATEWAY_PORTA:-8080}:8000"]
@@ -35,6 +37,7 @@ services:
       retries: 10
 
   bff-web:
+    image: saudeconecta/bff-web:${IMAGENS_TAG:-1.0}
     build: { context: ., dockerfile: bff/web/Dockerfile }
     <<: *svc-defaults
     environment:
@@ -45,6 +48,7 @@ services:
     depends_on: [pacientes, agendamento, triagem]
 
   bff-admin:
+    image: saudeconecta/bff-admin:${IMAGENS_TAG:-1.0}
     build: { context: ., dockerfile: bff/admin/Dockerfile }
     <<: *svc-defaults
     environment:
@@ -56,8 +60,22 @@ services:
     networks: [frontend, backend]
     depends_on: [pacientes, agendamento, notificacoes]
 
+  # ---------- Telas (arquivos estaticos, so pelo gateway) ----------
+  web-paciente:
+    image: saudeconecta/web-paciente:${IMAGENS_TAG:-1.0}
+    build: { context: ./clientes, args: { APP: paciente } }
+    <<: *svc-defaults
+    networks: [frontend]
+
+  web-gestor:
+    image: saudeconecta/web-gestor:${IMAGENS_TAG:-1.0}
+    build: { context: ./clientes, args: { APP: gestor } }
+    <<: *svc-defaults
+    networks: [frontend]
+
   # ---------- Servicos de dominio (cada um com seu banco) ----------
   pacientes:
+    image: saudeconecta/pacientes:${IMAGENS_TAG:-1.0}
     build: { context: ., dockerfile: services/pacientes/Dockerfile }
     <<: *svc-defaults
     environment:
@@ -80,11 +98,13 @@ services:
 
   # Gera o par de chaves do JWT uma unica vez. So Pacientes monta a privada.
   chaves:
+    image: saudeconecta/chaves:${IMAGENS_TAG:-1.0}
     build: ./infra/chaves
     volumes: [chave-privada:/privada, chave-publica:/publica]
     network_mode: none
 
   agendamento:
+    image: saudeconecta/agendamento:${IMAGENS_TAG:-1.0}
     build: { context: ., dockerfile: services/agendamento/Dockerfile }
     <<: *svc-defaults
     environment:
@@ -111,6 +131,7 @@ services:
     depends_on: { db-agendamento: { condition: service_healthy } }
 
   triagem:
+    image: saudeconecta/triagem:${IMAGENS_TAG:-1.0}
     build: ./services/triagem
     <<: *svc-defaults
     environment:
@@ -132,7 +153,8 @@ services:
 
   # Carrega a base de conhecimento no ChromaDB e termina. Se ja estiver carregada, nao faz nada.
   triagem-ingestao:
-    build: ./services/triagem
+    image: saudeconecta/triagem:${IMAGENS_TAG:-1.0} # construida pelo servico triagem
+    pull_policy: never
     restart: on-failure
     command: ["python", "-m", "app.rag.ingestao"]
     environment: { CHROMA_HOST: db-triagem-vetores }
@@ -141,6 +163,7 @@ services:
     depends_on: { db-triagem-vetores: { condition: service_healthy } }
 
   notificacoes:
+    image: saudeconecta/notificacoes:${IMAGENS_TAG:-1.0}
     build: { context: ., dockerfile: services/notificacoes/Dockerfile }
     <<: *svc-defaults
     environment:
@@ -250,6 +273,7 @@ services:
 
   # ---------- Mensageria ----------
   rabbitmq:
+    image: saudeconecta/rabbitmq:${IMAGENS_TAG:-1.0}
     build: ./infra/rabbitmq
     hostname: rabbitmq # o nome do no define a pasta de dados: fixo para nao perder filas
     environment:
