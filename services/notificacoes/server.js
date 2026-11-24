@@ -1,38 +1,35 @@
-const express = require('express');
-const net = require('net');
-const os = require('os');
+const { criarConsumidor } = require('../../libs/comum/consumidor');
+const { criarApp, aoEncerrar } = require('../../libs/comum/http');
+const { criarLoja } = require('./src/loja');
+const { criarRotas } = require('./src/rotas');
 
-const NAME = 'notificacoes';
 const PORT = process.env.PORT || 8004;
-const app = express();
-app.use(express.json());
+const loja = criarLoja();
 
-function checkDb() {
-  return new Promise((resolve) => {
-    const host = process.env.DB_HOST;
-    const port = Number(process.env.DB_PORT);
-    if (!host) return resolve('n/a');
-    const s = net.connect({ host, port, timeout: 1500 });
-    s.on('connect', () => { s.destroy(); resolve('up'); });
-    s.on('error', () => resolve('down'));
-    s.on('timeout', () => { s.destroy(); resolve('down'); });
-  });
+// Envio simulado: registra no log. Nao ha integracao com SMS ou e-mail.
+async function enviar(n) {
+  console.log(JSON.stringify({ nivel: 'info', servico: 'notificacoes', msg: 'envio simulado', id: n.id, tipo: n.tipo, canal: n.canal, agendamentoId: n.agendamentoId }));
 }
 
-// Vivo: o processo responde. Nao depende do banco, para nao ser reiniciado por falha alheia.
-app.get('/live', (_req, res) => res.json({ service: NAME, status: 'ok', instance: os.hostname() }));
+let parado = false, acordar = () => {};
+const envio = (async () => {
+  while (!parado) {
+    let n = 0;
+    try { n = await loja.enviarVencidas(enviar); } catch (e) { console.error(JSON.stringify({ nivel: 'erro', msg: 'envio', erro: e.message })); }
+    if (!parado && n === 0) await new Promise((ok) => { acordar = ok; setTimeout(ok, 1000); });
+  }
+})();
 
-// Pronto: pode receber trafego (banco acessivel).
-app.get('/ready', async (_req, res) => {
-  const db = await checkDb();
-  res.status(db === 'down' ? 503 : 200).json({
-    service: NAME, status: db === 'down' ? 'degraded' : 'ok', db, instance: os.hostname(),
-  });
+const consumidor = criarConsumidor({ fila: 'notificacoes.agendamento', tratar: (e) => loja.tratarEvento(e) });
+consumidor.iniciar();
+
+const app = criarApp({
+  nome: 'notificacoes',
+  rotas: criarRotas({ loja }),
+  pronto: async () => ({
+    db: await Promise.race([loja.ping().then(() => 'up', () => 'down'), new Promise((ok) => setTimeout(() => ok('down'), 1500).unref())]),
+    rabbitmq: consumidor.conectado() ? 'up' : 'down',
+  }),
 });
-
-app.get('/api/v1/notificacoes', (_req, res) =>
-  res.json({ data: [{ id: 1, tipo: 'LEMBRETE', canal: 'SMS', status: 'AGENDADA' }] }));
-app.get('/api/v1/notificacoes/alertas', (_req, res) =>
-  res.json({ data: [{ ubs: 'UBS Centro', tipo: 'GARGALO', mensagem: 'Demanda acima da capacidade' }] }));
-
-app.listen(PORT, () => console.log(`${NAME} ouvindo na porta ${PORT}`));
+const server = app.listen(PORT, () => console.log(JSON.stringify({ nivel: 'info', msg: `notificacoes ouvindo na porta ${PORT}` })));
+aoEncerrar(server, consumidor.fechar, async () => { parado = true; acordar(); await envio; }, loja.fechar);
