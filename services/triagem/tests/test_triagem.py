@@ -101,6 +101,15 @@ def test_permissoes_e_validacao(cliente):
     assert (fb("paciente"), fb("gestor")) == (403, 204)
 
 
+def test_consulta_pela_saga_respeita_o_dono(cliente):
+    s, eu = str(uuid.uuid4()), str(uuid.uuid4())
+    t = pedir(cliente, s, paciente=eu).json()
+    ver = lambda papel, quem, saga=s: cliente.get(f"/api/v1/triagens?sagaId={saga}", headers={"X-User-Role": papel, "X-User-Id": quem})
+    assert ver("paciente", eu).json() == t
+    assert (ver("paciente", str(uuid.uuid4())).status_code, ver("gestor", "").status_code) == (403, 200)
+    assert ver("paciente", eu, str(uuid.uuid4())).status_code == 404 and ver("paciente", eu, "x").status_code == 400
+
+
 def test_agendamento_criado_efetiva_e_mensagem_ruim_vai_para_dlq(cliente):
     s = str(uuid.uuid4())
     t = pedir(cliente, s).json()["id"]

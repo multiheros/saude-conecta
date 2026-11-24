@@ -84,6 +84,10 @@ function criarRotas({ pool, saga, consultas }) {
     res.status(201).json(await transacao(pool, (c) => agenda.criarEscala(c, { correlationId: req.correlationId }, e)));
   }));
 
+  // --- Catalogo: dado de referencia, que nao muda por evento. Le direto do PostgreSQL.
+  r.get('/ubs', rota(async (_req, res) => res.json((await pool.query('SELECT id, nome, endereco, regiao FROM ubs ORDER BY nome')).rows)));
+  r.get('/profissionais', rota(async (_req, res) => res.json((await pool.query('SELECT id, nome, especialidade FROM profissionais ORDER BY nome')).rows)));
+
   // --- Consultas (CQRS): so o Read Model. Ver consultas.js.
   r.get('/slots', rota(async (req, res) => {
     const { ubsId, especialidade, dataInicio, dataFim } = req.query;

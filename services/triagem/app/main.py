@@ -195,6 +195,16 @@ def buscar_triagem(triagem_id: str, x_user_role: str | None = Header(None), x_us
     return t
 
 
+# O agendamento guarda a SAGA, nao a triagem: e por ela que o BFF chega as orientacoes.
+@app.get("/api/v1/triagens")
+def da_saga(sagaId: str = Query(), x_user_role: str | None = Header(None), x_user_id: str | None = Header(None)):
+    t = repo.da_saga(uuid_valido(sagaId))
+    if t is None:
+        raise HTTPException(404, "Triagem nao encontrada")
+    exigir_dono(t, x_user_role, x_user_id)
+    return representar(t)
+
+
 @app.get("/api/v1/triagens/{triagem_id}")
 def consultar(t: dict = Depends(buscar_triagem)):
     return representar(t)
