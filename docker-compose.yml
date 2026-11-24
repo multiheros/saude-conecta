@@ -99,6 +99,10 @@ services:
       RABBITMQ_USER: ${RABBITMQ_USER:-saude}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-troque-me-rabbit}
       CHROMA_HOST: db-triagem-vetores
+      AGENDAMENTO_URL: http://agendamento:8002
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-} # vazia: a triagem trabalha por regras
+      LLM_MODELO: ${LLM_MODELO:-}
+      LLM_URL: ${LLM_URL:-}
     networks: [backend, mensageria, data-triagem]
     # A base vetorial nao e dependencia de partida: sem ela, a triagem responde sem citar fontes.
     depends_on: { db-triagem: { condition: service_healthy } }
