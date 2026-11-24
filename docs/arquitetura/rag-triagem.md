@@ -8,7 +8,7 @@ flowchart LR
     P["Caderno de Atenção Básica nº 28<br/>+ protocolo interno"] --> D["Divisão por seção<br/>até 250 tokens"]
     D --> E1["Embeddings locais<br/>(768 dimensões)"] --> C[("ChromaDB")]
   end
-  Q["Queixa do paciente"] --> E2["Embedding"] --> B["Top-5, similaridade de cosseno ≥ 0,58"]
+  Q["Queixa do paciente"] --> E2["Embedding"] --> B["Top-5, similaridade de cosseno ≥ 0,54"]
   C --> B --> T["LLM ou regras:<br/>triagem com fontes"]
 ```
 
@@ -28,7 +28,7 @@ O Caderno não traz uma escala de cinco cores; ela e os prazos são **decisão d
 | Embeddings locais, dentro da imagem | Sem custo por chamada, sem enviar a queixa do paciente para fora, e a busca funciona com a internet fora |
 | `gte-multilingual-base` (ONNX int8) | Melhor resultado na comparação abaixo |
 | Trechos de até 250 tokens, sobreposição de 40 | Acerto igual ou melhor que trechos maiores, com um terço do texto enviado ao LLM |
-| Corte em 0,58 | Das 32 queixas, 30 têm trecho certo acima dele; de 15 frases fora do assunto, 1 passa (texto sem sentido) |
+| Corte em 0,54 | Nenhuma das 44 queixas medidas fica sem trecho; de 15 frases fora do assunto, 4 passam. Era 0,58, e a [avaliação](../rag-avaliacao.md) mostrou que escondia trecho certo |
 | Uma coleção por versão da base | Conteúdo, modelo ou divisão diferentes geram outra coleção; a antiga só sai quando a nova está completa |
 | Cliente REST próprio, com prazo de 1,5 s | O cliente oficial usa `timeout=None`: um ChromaDB travado seguraria a SAGA |
 | Protocolo interno na mesma coleção | Liga o vocabulário do paciente ("se debater") ao do Caderno ("crise epiléptica") |
@@ -44,7 +44,7 @@ O Caderno não traz uma escala de cinco cores; ela e os prazos são **decisão d
 | gte-multilingual-base (int8) | 8192 | 25 | 27 | 400 |
 | gte-multilingual-base (int8) | 8192 | 27 | 28 | 800 |
 
-Estas 32 queixas serviram para **escolher** modelo e corte, portanto não medem a qualidade final. A avaliação usa outras perguntas.
+Estas 32 queixas serviram para **escolher** o modelo, portanto não medem a qualidade final. A [avaliação](../rag-avaliacao.md) usa outras perguntas.
 
 ## Falhas
 
