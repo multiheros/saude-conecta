@@ -19,7 +19,7 @@ from .vetores import Vetores
 
 log = logging.getLogger("triagem.rag")
 TOP_K = 5
-CORTE = 0.58  # abaixo disso o trecho e descartado; como foi escolhido: docs/arquitetura/rag-triagem.md
+CORTE = 0.54  # abaixo disso o trecho e descartado; como foi escolhido: docs/arquitetura/rag-triagem.md
 PRAZO = 1.5  # segundos para o ChromaDB, incluindo a resolucao de nome (que o timeout do httpx nao cobre)
 PAUSA = 5.0  # depois de uma falha, segundos sem tentar de novo
 

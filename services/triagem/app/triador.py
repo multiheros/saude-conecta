@@ -166,7 +166,8 @@ class Triador:
         usados = [d["trechos"][i - 1] for i in dict.fromkeys(s.trechos) if 1 <= i <= len(d["trechos"])]
         ordem = usados + [t for t in d["trechos"] if t not in usados]
         nivel, justificativa = s.classificacao, s.justificativa
-        if s.confianca < CONFIANCA_MINIMA and regras.NIVEIS.index(nivel) > regras.NIVEIS.index("AMARELO"):
+        duvida = s.confianca < CONFIANCA_MINIMA or not d["trechos"]  # sem apoio na base, o modelo so opina
+        if duvida and regras.NIVEIS.index(nivel) > regras.NIVEIS.index("AMARELO"):
             nivel = "AMARELO"  # na duvida, o mais urgente
         if _PRESCRICAO.search(justificativa):
             justificativa = "Classificação feita com base nos protocolos consultados."

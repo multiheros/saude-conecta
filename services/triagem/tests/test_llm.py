@@ -165,6 +165,13 @@ def test_pouca_confianca_vira_o_mais_urgente(t, gemini, nivel, confianca, final)
     assert t.classificar("sinto algo estranho no corpo", 30)["classificacao"] == final
 
 
+def test_sem_trecho_de_apoio_o_modelo_nao_rebaixa(modelo, gemini):
+    sem_base = Triador(Busca([]), modelo)
+    for do_modelo, final in (("AZUL", "AMARELO"), ("VERDE", "AMARELO"), ("LARANJA", "LARANJA")):
+        gemini.modo(resposta={"classificacao": do_modelo, "confianca": 0.95})
+        assert sem_base.classificar("sinto algo estranho no corpo", 30)["classificacao"] == final
+
+
 def test_especialidade_fixa_nao_e_desfeita(t, gemini):
     assert t.classificar("tosse leve há um dia", 5)["especialidadeSugerida"] == "Pediatria"
     assert t.classificar("estou grávida e com enjoo leve", 30)["especialidadeSugerida"] == "Ginecologia"

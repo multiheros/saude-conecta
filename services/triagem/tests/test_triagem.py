@@ -36,6 +36,25 @@ def pedir(c, saga, sintomas="tosse e coriza ha dois dias", paciente=None, **extr
     ("sem febre, dor no peito", 30, "LARANJA"),
     ("não tenho tosse porém falta de ar", 30, "LARANJA"),
     ("sinto uma coisa esquisita no corpo", 30, "AMARELO"),
+    ("sinto um peso no meio do peito indo para o queixo e suando gelado", 61, "VERMELHO"),
+    ("aperto no peito sem dor no braço", 50, "VERMELHO"),  # a negacao vale para a queixa, nao para o conjunto: erra para o lado seguro
+    ("peso no peito quando fico nervoso", 30, "LARANJA"),
+    ("minha língua está inchando e estou rouco depois do amendoim", 25, "VERMELHO"),
+    ("ela tomou uma cartela de remédio e está muito sonolenta", 17, "VERMELHO"),
+    ("meu filho engoliu água sanitária", 3, "LARANJA"),
+    ("tomei um comprimido para dor de cabeça", 30, "VERDE"),
+    ("fiquei dormente entre as coxas e não seguro o xixi", 46, "LARANJA"),
+    ("caiu café quente no rosto da minha filha", 3, "LARANJA"),
+    ("bebi café quente e queimei a língua", 30, "AMARELO"),
+    ("um cachorro avançou e me cortou a perna", 35, "AMARELO"),
+    ("estou grávida e com dor na barriga", 27, "AMARELO"),
+    ("urinar está queimando e tive febre", 29, "AMARELO"),
+    ("meu companheiro me bateu ontem", 30, "AMARELO"),
+    ("dor na barriga do lado direito e febre", 19, "AMARELO"),
+    ("dor na barriga, sem febre", 19, "VERDE"),
+    ("uso insulina e fiquei tremendo e confuso", 54, "LARANJA"),
+    ("estou chiando e cansado para respirar", 38, "LARANJA"),
+    ("pressão alta e a vista embaçou", 68, "VERMELHO"),
 ])
 def test_regras(sintomas, idade, nivel):
     assert regras.classificar(sintomas, idade)["classificacao"] == nivel
