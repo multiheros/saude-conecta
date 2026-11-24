@@ -43,7 +43,8 @@ def normalizar(texto: str) -> str:
     return re.sub(r"\s+", " ", "".join(c for c in sem_acento if unicodedata.category(c) != "Mn")).strip()
 
 
-def classificar(sintomas: str, idade: int | None = None) -> dict:
+def sinais(sintomas: str, idade: int | None = None) -> list[tuple[str, str]]:
+    """(nivel, motivo) de cada sinal reconhecido e nao negado."""
     texto = normalizar(sintomas)
     achados = []
     for nivel, padrao, motivo in _SINAIS:
@@ -55,12 +56,17 @@ def classificar(sintomas: str, idade: int | None = None) -> dict:
             break
     if idade is not None and idade < 1 and re.search(r"febre", texto):
         achados.append(("LARANJA", "febre em menor de 1 ano"))
+    return achados
+
+
+def classificar(sintomas: str, idade: int | None = None) -> dict:
+    achados = sinais(sintomas, idade)
     if achados:
         nivel, motivo = min(achados, key=lambda a: NIVEIS.index(a[0]))
         justificativa = f"Regra: {motivo}."
     else:
         nivel, justificativa = "AMARELO", "Regra: queixa nao reconhecida; nivel conservador."
-    return {"classificacao": nivel, "justificativa": justificativa, "especialidadeSugerida": especialidade(texto, idade)}
+    return {"classificacao": nivel, "justificativa": justificativa, "especialidadeSugerida": especialidade(normalizar(sintomas), idade)}
 
 
 def especialidade(texto_normalizado: str, idade: int | None) -> str:

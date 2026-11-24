@@ -15,6 +15,7 @@ from app.consumidor import esperar
 from app.rag import base, busca, ingestao
 from app.rag.embeddings import Embeddings
 from app.rag.vetores import Vetores
+from app.triador import Triador
 
 INTERNO = {"X-User-Role": "servico"}
 CAPITULOS = ("2.2 ", "2.13 ")  # cefaleia e dor toracica
@@ -227,7 +228,9 @@ def test_recupera_depois_da_pausa_e_se_a_colecao_for_refeita(parte, vetores, emb
 # --- Na API
 def test_triagem_cita_fontes_e_segue_sem_a_base(cliente, parte, vetores, emb, monkeypatch):
     ingestao.ingerir(vetores, emb)
-    monkeypatch.setattr(main, "buscador", busca.Buscador(emb=emb))
+    b = busca.Buscador(emb=emb)
+    monkeypatch.setattr(main, "buscador", b)
+    monkeypatch.setattr(main, "triador", Triador(b))
     monkeypatch.setattr(busca, "PAUSA", 0)
     c = cliente
     def pedir():
