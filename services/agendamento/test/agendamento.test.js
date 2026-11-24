@@ -2,13 +2,16 @@
 const { test, before, beforeEach, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { randomUUID } = require('crypto');
-const { criarPool, migrar, transacao } = require('../src/db');
+const path = require('path');
+const { criarPool, migrar: migrarDir, transacao } = require('../../../libs/comum/db');
 const agenda = require('../src/agenda');
-const outbox = require('../src/outbox');
-const { criarApp } = require('../src/rotas');
+const outbox = require('../../../libs/comum/outbox');
+const { criarApp } = require('../../../libs/comum/http');
+const { criarRotas } = require('../src/rotas');
 const { semear, UBS, PROFISSIONAIS } = require('../src/seed');
 
 const pool = criarPool();
+const migrar = (p) => migrarDir(p, path.join(__dirname, '..', 'migrations'));
 const ctx = { correlationId: 'teste' };
 const CLINICA = PROFISSIONAIS[0][0], PEDIATRIA = PROFISSIONAIS[1][0], CENTRO = UBS[0][0];
 let server, base;
@@ -17,7 +20,7 @@ before(async () => {
   for (let i = 0; ; i++) { try { await pool.query('SELECT 1'); break; } catch (e) { if (i > 30) throw e; await new Promise((r) => setTimeout(r, 500)); } }
   await migrar(pool);
   await semear(pool);
-  server = criarApp({ pool, publicador: { conectado: () => false }, instancia: 't' }).listen(0);
+  server = criarApp({ nome: 'teste', rotas: criarRotas({ pool }), pronto: async () => ({ db: 'up' }) }).listen(0);
   base = `http://127.0.0.1:${server.address().port}/api/v1`;
 });
 beforeEach(async () => {

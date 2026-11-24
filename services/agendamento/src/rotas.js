@@ -1,14 +1,10 @@
 const express = require('express');
-const { randomUUID } = require('crypto');
-const { transacao } = require('./db');
-const { Problema } = require('./erros');
+const { transacao } = require('../../../libs/comum/db');
+const { Problema } = require('../../../libs/comum/erros');
+const { UUID, inteiro, invalido, exigirPerfil, exigirDono, rota } = require('../../../libs/comum/http');
 const agenda = require('./agenda');
-const outbox = require('./outbox');
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
-const invalido = (detalhe) => new Problema(422, 'Dados invalidos', detalhe);
-const inteiro = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 
 function representar(a) {
   const base = `/api/v1/agendamentos/${a.id}`;
@@ -21,19 +17,8 @@ function representar(a) {
   };
 }
 
-// Identidade injetada pelo gateway (X-User-Id / X-User-Role).
-function exigirPerfil(req, perfil) {
-  if (req.get('X-User-Role') !== perfil) throw new Problema(403, 'Sem permissao', `Apenas perfil ${perfil}.`);
-}
-function exigirDono(req, pacienteId) {
-  const perfil = req.get('X-User-Role');
-  if (perfil === 'gestor' || (perfil === 'paciente' && req.get('X-User-Id') === pacienteId)) return;
-  throw new Problema(403, 'Sem permissao');
-}
-
 function criarRotas({ pool }) {
   const r = express.Router();
-  const rota = (fn) => (req, res, next) => fn(req, res).catch(next);
 
   r.param('id', (req, _res, next, id) => next(UUID.test(id) ? undefined : new Problema(404, 'Agendamento nao encontrado')));
 
@@ -115,42 +100,4 @@ function criarRotas({ pool }) {
   return r;
 }
 
-function criarApp({ pool, publicador, nome = 'agendamento', instancia }) {
-  const app = express();
-  app.disable('x-powered-by');
-  app.use((req, res, next) => {
-    req.correlationId = req.get('X-Correlation-Id') || randomUUID();
-    res.set('X-Correlation-Id', req.correlationId);
-    const t0 = Date.now();
-    res.on('finish', () => {
-      if (['/live', '/ready'].includes(req.path)) return;
-      console.log(JSON.stringify({ nivel: 'info', servico: nome, correlationId: req.correlationId, metodo: req.method, caminho: req.originalUrl, status: res.statusCode, ms: Date.now() - t0 }));
-    });
-    next();
-  });
-  app.use(express.json());
-
-  // Vivo: o processo responde. Nao depende do banco, para nao ser reiniciado por falha alheia.
-  app.get('/live', (_req, res) => res.json({ service: nome, status: 'ok', instance: instancia }));
-  // Pronto: banco acessivel. RabbitMQ fora nao tira o servico do ar: o Outbox guarda os eventos.
-  app.get('/ready', async (_req, res) => {
-    const db = await pool.query('SELECT 1').then(() => 'up', () => 'down');
-    res.status(db === 'up' ? 200 : 503).json({ service: nome, status: db === 'up' ? 'ok' : 'degraded', db, rabbitmq: publicador.conectado() ? 'up' : 'down', instance: instancia });
-  });
-  app.get('/metricas', async (_req, res, next) => { try { res.json({ outbox: await outbox.metricas(pool) }); } catch (e) { next(e); } });
-
-  app.use('/api/v1', criarRotas({ pool }));
-  app.use((_req, _res, next) => next(new Problema(404, 'Recurso nao encontrado')));
-  app.use((e, req, res, _next) => {
-    const jsonInvalido = e.type === 'entity.parse.failed';
-    const status = e instanceof Problema ? e.status : jsonInvalido ? 400 : 500;
-    if (status === 500) console.error(JSON.stringify({ nivel: 'erro', correlationId: req.correlationId, erro: e.stack }));
-    res.status(status).type('application/problem+json').json({
-      type: 'about:blank', title: e instanceof Problema ? e.title : jsonInvalido ? 'JSON invalido' : 'Erro interno',
-      status, detail: e instanceof Problema ? e.detail : undefined, correlationId: req.correlationId,
-    });
-  });
-  return app;
-}
-
-module.exports = { criarApp };
+module.exports = { criarRotas };

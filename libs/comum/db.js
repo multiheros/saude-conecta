@@ -6,7 +6,7 @@ function criarPool(env = process.env) {
   const pool = new Pool({
     host: env.DB_HOST,
     port: Number(env.DB_PORT || 5432),
-    database: env.DB_NAME || 'agendamento',
+    database: env.DB_NAME,
     user: env.DB_USER,
     password: env.DB_PASSWORD,
     max: 10,
@@ -36,9 +36,9 @@ async function transacao(pool, fn) {
 }
 
 // Aplica as migracoes pendentes. A trava consultiva evita corrida entre replicas.
-async function migrar(pool, dir = path.join(__dirname, '..', 'migrations')) {
+async function migrar(pool, dir) {
   await transacao(pool, async (c) => {
-    await c.query('SELECT pg_advisory_xact_lock(8002)');
+    await c.query('SELECT pg_advisory_xact_lock(1)');
     await c.query('CREATE TABLE IF NOT EXISTS schema_migrations (nome TEXT PRIMARY KEY, aplicada_em TIMESTAMPTZ NOT NULL DEFAULT now())');
     const { rows } = await c.query('SELECT nome FROM schema_migrations');
     const aplicadas = new Set(rows.map((r) => r.nome));
@@ -50,4 +50,15 @@ async function migrar(pool, dir = path.join(__dirname, '..', 'migrations')) {
   });
 }
 
-module.exports = { criarPool, transacao, migrar };
+// Executa fn no maximo uma vez por evento, na mesma transacao que registra o eventId.
+// Exige a tabela processed_events (consumer, event_id).
+async function umaVez(pool, consumidor, eventId, fn) {
+  return transacao(pool, async (c) => {
+    const { rowCount } = await c.query('INSERT INTO processed_events (consumer, event_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [consumidor, eventId]);
+    if (rowCount === 0) return false;
+    await fn(c);
+    return true;
+  });
+}
+
+module.exports = { criarPool, transacao, migrar, umaVez };

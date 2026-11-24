@@ -1,7 +1,7 @@
 // Regras do dominio. Toda funcao recebe o cliente de uma transacao em curso:
 // mudanca de estado e evento sao gravados juntos (Outbox).
-const { Problema } = require('./erros');
-const { gravarEvento } = require('./outbox');
+const { Problema } = require('../../../libs/comum/erros');
+const { gravarEvento } = require('../../../libs/comum/outbox');
 
 const ACOES = {
   PENDENTE: [],
