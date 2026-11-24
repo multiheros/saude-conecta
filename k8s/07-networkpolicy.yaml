@@ -70,3 +70,34 @@ spec:
   ingress:
     - from: [{ podSelector: { matchLabels: { app: notificacoes } } }]
       ports: [{ protocol: TCP, port: 6379 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: cache-gateway, namespace: saudeconecta }
+spec:
+  podSelector: { matchLabels: { app: cache-gateway } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: gateway } } }]
+      ports: [{ protocol: TCP, port: 6379 }]
+---
+# Os servicos confiam em X-User-*. So a borda e os proprios servicos chegam neles: quem tentar contornar o
+# gateway (outro namespace, o Ingress) nao abre conexao.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: dominio, namespace: saudeconecta }
+spec:
+  podSelector: { matchLabels: { camada: dominio } }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchExpressions: [{ key: camada, operator: In, values: [borda, dominio] }] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: bffs, namespace: saudeconecta }
+spec:
+  podSelector: { matchExpressions: [{ key: app, operator: In, values: [bff-web, bff-admin] }] }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: gateway } } }]

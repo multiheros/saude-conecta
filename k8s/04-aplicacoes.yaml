@@ -301,3 +301,79 @@ spec:
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { cpu: 250m, memory: 256Mi }
+---
+# Gateway (Kong sem banco): entrada unica. JWT, perfil por rota, limite por IP e identidade.
+apiVersion: v1
+kind: Service
+metadata: { name: gateway, namespace: saudeconecta }
+spec:
+  selector: { app: gateway }
+  ports: [{ port: 8000, targetPort: 8000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: gateway, namespace: saudeconecta }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: gateway } }
+  template:
+    metadata: { labels: { app: gateway, camada: borda } }
+    spec:
+      enableServiceLinks: false
+      volumes: [{ name: jwt, configMap: { name: jwt-publica } }] # scripts/k8s-chaves.sh
+      containers:
+        - name: gateway
+          image: saudeconecta/gateway:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8000 }]
+          env:
+            - { name: LIMITE_REDIS_HOST, value: cache-gateway }
+            - name: LIMITE_SENHA
+              valueFrom: { secretKeyRef: { name: gateway-cache, key: LIMITE_SENHA } }
+            # O IP do cliente chega pelo Ingress; so a rede de pods pode informa-lo.
+            - { name: KONG_TRUSTED_IPS, value: 10.244.0.0/16 }
+            - { name: KONG_REAL_IP_HEADER, value: X-Forwarded-For }
+            - { name: KONG_REAL_IP_RECURSIVE, value: "on" }
+          volumeMounts: [{ name: jwt, mountPath: /chaves, readOnly: true }]
+          readinessProbe:
+            httpGet: { path: /status/ready, port: 8100 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /status, port: 8100 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: "1", memory: 768Mi }
+---
+# Contador do limite, unico entre as replicas do gateway. So cache: sem volume.
+apiVersion: v1
+kind: Service
+metadata: { name: cache-gateway, namespace: saudeconecta }
+spec:
+  selector: { app: cache-gateway }
+  ports: [{ port: 6379 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: cache-gateway, namespace: saudeconecta }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: cache-gateway } }
+  template:
+    metadata: { labels: { app: cache-gateway, camada: dados } }
+    spec:
+      containers:
+        - name: cache-gateway
+          image: redis:7-alpine
+          ports: [{ containerPort: 6379 }]
+          command: ["sh", "-c", 'exec redis-server --save "" --appendonly no --maxmemory 32mb --maxmemory-policy allkeys-lru --requirepass "$LIMITE_SENHA"']
+          env:
+            - name: LIMITE_SENHA
+              valueFrom: { secretKeyRef: { name: gateway-cache, key: LIMITE_SENHA } }
+          readinessProbe:
+            tcpSocket: { port: 6379 }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits: { cpu: 250m, memory: 64Mi }
