@@ -1,40 +1,18 @@
 """Integracao contra MongoDB e RabbitMQ reais e descartaveis."""
 
 import json
-import os
 import threading
 import uuid
 
-import pika
 import pytest
-from fastapi.testclient import TestClient
 
 from app import regras
 from app.consumidor import esperar
-from app.main import app, repo
+from app.main import repo
+
+from conftest import conectar
 
 INTERNO = {"X-User-Role": "servico"}
-
-
-def conectar():
-    return pika.BlockingConnection(pika.ConnectionParameters(os.environ["RABBITMQ_HOST"], credentials=pika.PlainCredentials(os.environ["RABBITMQ_USER"], os.environ["RABBITMQ_PASSWORD"])))
-
-
-@pytest.fixture(scope="module")
-def cliente():
-    assert esperar(repo.ping, 20)
-    # O broker de teste e compartilhado: descarta eventos deixados por outros servicos.
-    cx = conectar()
-    cx.channel().queue_purge("triagem.agendamento")
-    cx.close()
-    with TestClient(app) as c:
-        yield c
-
-
-@pytest.fixture(autouse=True)
-def limpar():
-    repo.db.triagens.delete_many({})
-    repo.db.encerradas.delete_many({})
 
 
 def pedir(c, saga, sintomas="tosse e coriza ha dois dias", paciente=None, **extra):

@@ -15,6 +15,7 @@ from pymongo.errors import PyMongoError
 
 from . import regras
 from .consumidor import Consumidor
+from .rag.busca import Buscador, fontes
 from .repositorio import Repositorio, SagaEncerrada, agora
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -24,6 +25,7 @@ log = logging.getLogger("triagem")
 
 UUID = re.compile(r"^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$", re.I)
 repo = Repositorio()
+buscador: Buscador | None = None  # sem CHROMA_HOST, a triagem funciona sem citar fontes
 
 
 def tratar_evento(evento: dict):
@@ -36,6 +38,10 @@ consumidor = Consumidor(os.environ, tratar_evento)
 
 @asynccontextmanager
 async def ciclo(_app):
+    global buscador
+    if os.getenv("CHROMA_HOST") and buscador is None:
+        buscador = Buscador()
+        buscador.buscar("aquecimento")  # carrega o modelo e localiza a colecao
     if os.getenv("RABBITMQ_HOST"):
         consumidor.start()
     yield
@@ -112,7 +118,8 @@ def ready():
     ok = repo.ping()
     return JSONResponse(status_code=200 if ok else 503, content={
         "service": "triagem", "status": "ok" if ok else "degraded", "db": "up" if ok else "down",
-        "rabbitmq": "up" if consumidor.conectado else "down", "instance": socket.gethostname()})
+        "rabbitmq": "up" if consumidor.conectado else "down",
+        "base": buscador.estado() if buscador else "down", "instance": socket.gethostname()})
 
 
 # --- Triagens
@@ -131,8 +138,8 @@ def representar(t: dict) -> dict:
         "id": t["_id"], "criadoEm": t["criadoEm"].isoformat()}
 
 
-# SAGA passo 1. Idempotente por SAGA. O modelo de linguagem entra aqui na proxima etapa;
-# por ora, so as regras (que serao o fallback dele).
+# SAGA passo 1. Idempotente por SAGA. Classifica por regras e cita os trechos da base recuperados para a
+# queixa; o modelo de linguagem entra aqui na proxima etapa, com as regras de fallback.
 @app.post("/api/v1/triagens", status_code=201, dependencies=[Depends(exigir_servico)])
 def criar(body: TriagemIn, x_saga_id: str = Header()):
     saga = uuid_valido(x_saga_id)
@@ -140,7 +147,8 @@ def criar(body: TriagemIn, x_saga_id: str = Header()):
     if existente is None:
         existente = {
             "_id": str(uuid.uuid4()), "sagaId": saga, "pacienteId": str(body.pacienteId), "sintomas": body.sintomas, "idade": body.idade,
-            **regras.classificar(body.sintomas, body.idade), "confianca": None, "origem": "REGRAS", "fontes": [],
+            **regras.classificar(body.sintomas, body.idade), "confianca": None, "origem": "REGRAS",
+            "fontes": fontes(buscador.buscar(body.sintomas)) if buscador else [],
             "temporaria": True, "criadoEm": agora(),
         }
     try:
