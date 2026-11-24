@@ -14,7 +14,8 @@ class SagaEncerrada(Exception):
 
 
 def agora():
-    return datetime.now(timezone.utc)
+    t = datetime.now(timezone.utc)
+    return t.replace(microsecond=t.microsecond // 1000 * 1000)  # precisao do MongoDB: a repeticao devolve o mesmo valor
 
 
 class Repositorio:

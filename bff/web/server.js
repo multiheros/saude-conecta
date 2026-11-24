@@ -1,33 +1,7 @@
-const express = require('express');
-const os = require('os');
+const { criarApp, aoEncerrar } = require('../../libs/comum/http');
+const { criarRotas } = require('./src/rotas');
 
+// O gateway remove o prefixo /web/v1.
 const PORT = process.env.PORT || 3001;
-const PACIENTES = process.env.PACIENTES_URL || 'http://pacientes:8001';
-const AGENDAMENTO = process.env.AGENDAMENTO_URL || 'http://agendamento:8002';
-const EU = 'c1000000-0000-4000-8000-000000000001'; // provisorio: vem do JWT a partir da etapa do gateway
-const UBS_PADRAO = 'a1000000-0000-4000-8000-000000000001'; // provisorio: vira a UBS do paciente logado
-
-const app = express();
-
-app.get(['/live', '/ready'], (_req, res) => res.json({ service: 'bff-web', status: 'ok', instance: os.hostname() }));
-
-// BFF do paciente: dados simples, pessoais e acionaveis.
-// O gateway remove o prefixo /web/v1 (strip_path), entao a rota aqui e /home.
-app.get('/home', async (_req, res) => {
-  try {
-    const [p, s] = await Promise.all([
-      fetch(`${PACIENTES}/api/v1/pacientes/${EU}`, { headers: { 'X-User-Role': 'paciente', 'X-User-Id': EU } }).then((r) => r.json()),
-      fetch(`${AGENDAMENTO}/api/v1/slots?ubsId=${UBS_PADRAO}`).then((r) => r.json()),
-    ]);
-    res.json({
-      cliente: 'web',
-      paciente: { nome: p.nome },
-      horariosLivres: s.slice(0, 5),
-      atendidoPor: os.hostname(),
-    });
-  } catch (e) {
-    res.status(502).json({ title: 'Servico indisponivel', status: 502 });
-  }
-});
-
-app.listen(PORT, () => console.log(`bff-web ouvindo na porta ${PORT}`));
+const app = criarApp({ nome: 'bff-web', prefixo: '/', rotas: criarRotas(), essencial: 'bff', pronto: async () => ({ bff: 'up' }) });
+aoEncerrar(app.listen(PORT, () => console.log(JSON.stringify({ nivel: 'info', msg: `bff-web ouvindo na porta ${PORT}` }))));

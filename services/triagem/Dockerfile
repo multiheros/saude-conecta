@@ -4,20 +4,31 @@ WORKDIR /build
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
+# Modelo de embeddings (350 MB): camada propria, so refeita se a versao do modelo mudar
+FROM python:3.12-slim AS modelo
+COPY baixar_modelo.py .
+RUN mkdir /modelo && python baixar_modelo.py /modelo
+
 # Estagio de teste: nao entra na imagem final (docker-compose.test.yml)
 FROM builder AS teste
 COPY requirements-dev.txt .
 RUN pip install --no-cache-dir -r requirements-dev.txt
+ENV ORT_DISABLE_TELEMETRY=1
+COPY --from=modelo /modelo /modelo
 WORKDIR /app
+COPY base ./base
 COPY app ./app
 COPY tests ./tests
 CMD ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests"]
 
 # Estagio final: so o necessario para executar, usuario nao-root
 FROM python:3.12-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+# O onnxruntime envia telemetria por padrao; num servico de saude, desligada
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 ORT_DISABLE_TELEMETRY=1
 WORKDIR /app
 COPY --from=builder /install /usr/local
+COPY --from=modelo /modelo /modelo
+COPY base ./base
 COPY app ./app
 RUN useradd -r -u 10001 app
 USER app

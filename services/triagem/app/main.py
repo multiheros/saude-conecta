@@ -13,9 +13,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from pymongo.errors import PyMongoError
 
-from . import regras
 from .consumidor import Consumidor
+from .llm import modelo as modelo_llm
+from .llm.cache import Cache
+from .rag.busca import Buscador
 from .repositorio import Repositorio, SagaEncerrada, agora
+from .triador import Triador
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logging.getLogger("pika").setLevel(logging.CRITICAL)
@@ -24,6 +27,8 @@ log = logging.getLogger("triagem")
 
 UUID = re.compile(r"^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$", re.I)
 repo = Repositorio()
+buscador: Buscador | None = None  # sem CHROMA_HOST, a triagem funciona sem citar fontes
+triador: Triador | None = None
 
 
 def tratar_evento(evento: dict):
@@ -36,6 +41,12 @@ consumidor = Consumidor(os.environ, tratar_evento)
 
 @asynccontextmanager
 async def ciclo(_app):
+    global buscador, triador
+    if os.getenv("CHROMA_HOST") and buscador is None:
+        buscador = Buscador()
+        buscador.buscar("aquecimento")  # carrega o modelo de embeddings e localiza a colecao
+    if triador is None:
+        triador = Triador(buscador, modelo_llm.criar(), Cache(repo.db))
     if os.getenv("RABBITMQ_HOST"):
         consumidor.start()
     yield
@@ -112,7 +123,8 @@ def ready():
     ok = repo.ping()
     return JSONResponse(status_code=200 if ok else 503, content={
         "service": "triagem", "status": "ok" if ok else "degraded", "db": "up" if ok else "down",
-        "rabbitmq": "up" if consumidor.conectado else "down", "instance": socket.gethostname()})
+        "rabbitmq": "up" if consumidor.conectado else "down",
+        "base": buscador.estado() if buscador else "down", "instance": socket.gethostname()})
 
 
 # --- Triagens
@@ -131,8 +143,7 @@ def representar(t: dict) -> dict:
         "id": t["_id"], "criadoEm": t["criadoEm"].isoformat()}
 
 
-# SAGA passo 1. Idempotente por SAGA. O modelo de linguagem entra aqui na proxima etapa;
-# por ora, so as regras (que serao o fallback dele).
+# SAGA passo 1. Idempotente por SAGA. RAG + LLM; sem o modelo, regras com os mesmos trechos (origem REGRAS).
 @app.post("/api/v1/triagens", status_code=201, dependencies=[Depends(exigir_servico)])
 def criar(body: TriagemIn, x_saga_id: str = Header()):
     saga = uuid_valido(x_saga_id)
@@ -140,8 +151,7 @@ def criar(body: TriagemIn, x_saga_id: str = Header()):
     if existente is None:
         existente = {
             "_id": str(uuid.uuid4()), "sagaId": saga, "pacienteId": str(body.pacienteId), "sintomas": body.sintomas, "idade": body.idade,
-            **regras.classificar(body.sintomas, body.idade), "confianca": None, "origem": "REGRAS", "fontes": [],
-            "temporaria": True, "criadoEm": agora(),
+            **triador.classificar(body.sintomas, body.idade), "temporaria": True, "criadoEm": agora(),
         }
     try:
         return representar(repo.criar(existente))
@@ -155,12 +165,44 @@ def descartar(sagaId: str = Query()):
     return Response(status_code=204)
 
 
+# Antes da SAGA: classifica e recomenda horarios reais da unidade. Nao grava triagem.
+class RecomendacaoIn(BaseModel):
+    sintomas: str = Field(min_length=10, max_length=2000)
+    idade: int | None = Field(default=None, ge=0, le=130)
+    ubsId: uuid.UUID
+
+
+@app.post("/api/v1/triagens/recomendacoes")
+def recomendar(body: RecomendacaoIn, request: Request, x_user_role: str | None = Header(None)):
+    if x_user_role not in ("paciente", "gestor", "servico"):
+        raise HTTPException(403, "Sem permissao")
+    return triador.recomendar(body.sintomas, body.idade, str(body.ubsId), request.state.correlation_id)
+
+
+# Indicadores desta replica, sem dado de paciente. Declarada antes de /triagens/{id}.
+@app.get("/api/v1/triagens/saude-llm")
+def saude_llm(x_user_role: str | None = Header(None)):
+    if x_user_role not in ("gestor", "servico"):
+        raise HTTPException(403, "Sem permissao")
+    return triador.indicadores() | {"instance": socket.gethostname()}
+
+
 def buscar_triagem(triagem_id: str, x_user_role: str | None = Header(None), x_user_id: str | None = Header(None)) -> dict:
     t = repo.buscar(triagem_id)
     if t is None:
         raise HTTPException(404, "Triagem nao encontrada")
     exigir_dono(t, x_user_role, x_user_id)
     return t
+
+
+# O agendamento guarda a SAGA, nao a triagem: e por ela que o BFF chega as orientacoes.
+@app.get("/api/v1/triagens")
+def da_saga(sagaId: str = Query(), x_user_role: str | None = Header(None), x_user_id: str | None = Header(None)):
+    t = repo.da_saga(uuid_valido(sagaId))
+    if t is None:
+        raise HTTPException(404, "Triagem nao encontrada")
+    exigir_dono(t, x_user_role, x_user_id)
+    return representar(t)
 
 
 @app.get("/api/v1/triagens/{triagem_id}")

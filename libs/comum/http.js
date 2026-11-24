@@ -22,13 +22,14 @@ function exigirDono(req, pacienteId) {
 }
 
 // `pronto` devolve um objeto { dependencia: 'up'|'down' }; `essencial` e a que define 200/503.
-function criarApp({ nome, rotas, pronto, essencial = 'db', metricas }) {
+function criarApp({ nome, rotas, pronto, essencial = 'db', metricas, prefixo = '/api/v1' }) {
   const instance = os.hostname();
   const app = express();
   app.disable('x-powered-by');
   app.use((req, res, next) => {
     req.correlationId = req.get('X-Correlation-Id') || randomUUID();
     res.set('X-Correlation-Id', req.correlationId);
+    res.set('X-Instance', instance); // qual replica respondeu
     const t0 = Date.now();
     res.on('finish', () => {
       if (['/live', '/ready'].includes(req.path)) return;
@@ -48,7 +49,7 @@ function criarApp({ nome, rotas, pronto, essencial = 'db', metricas }) {
   });
   if (metricas) app.get('/metricas', rota(async (_req, res) => res.json(await metricas())));
 
-  app.use('/api/v1', rotas);
+  app.use(prefixo, rotas);
   app.use((_req, _res, next) => next(new Problema(404, 'Recurso nao encontrado')));
   app.use((e, req, res, _next) => {
     const jsonInvalido = e.type === 'entity.parse.failed';

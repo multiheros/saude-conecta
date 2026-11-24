@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: |
     Classificação de urgência (LLM + RAG sobre protocolos médicos) e orientação pré-consulta.
-    Bancos: MongoDB (triagens) + ChromaDB (vetores). A classificação segue o Protocolo de Manchester (5 níveis).
+    Bancos: MongoDB (triagens) + ChromaDB (vetores). A classificação usa 5 níveis inspirados no Protocolo de Manchester.
 servers:
   - url: https://api.saudeconecta.local/api/v1
     description: Via API Gateway
@@ -12,6 +12,19 @@ tags:
   - name: Triagens
 paths:
   /triagens:
+    get:
+      tags: [Triagens]
+      summary: Triagem de uma SAGA (do próprio paciente)
+      parameters:
+        - { name: sagaId, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Triagem
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Triagem' }
+        '403': { description: De outro paciente }
+        '404': { description: Não encontrada }
     post:
       tags: [Triagens]
       summary: (SAGA passo 1) Classifica urgência a partir dos sintomas (perfil interno `servico`)
@@ -64,18 +77,19 @@ paths:
               properties:
                 sintomas: { type: string }
                 idade: { type: integer }
-                ubsId: { type: string, format: uuid }
+                ubsId: { type: string, format: uuid, description: A consulta à agenda fica restrita a esta unidade }
       responses:
         '200':
           description: Recomendação
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Recomendacao' }
+        '403': { description: 'Sem identidade de paciente, gestor ou serviço' }
         '422': { description: Sintomas insuficientes }
   /triagens/saude-llm:
     get:
       tags: [Triagens]
-      summary: Estado do circuit breaker, cache e fallback
+      summary: Estado do circuit breaker, cache e fallback da réplica que respondeu (perfis `gestor` e `servico`)
       responses:
         '200':
           description: Indicadores
@@ -88,6 +102,21 @@ paths:
                   chamadas: { type: integer }
                   acertosCache: { type: integer }
                   fallbacks: { type: integer }
+                  habilitado: { type: boolean, description: Se há chave do provedor }
+                  modelo: { type: string, nullable: true }
+                  repeticoes: { type: integer }
+                  recusadasPeloCircuito: { type: integer }
+                  tokensEntrada: { type: integer }
+                  tokensSaida: { type: integer }
+                  falhasPorMotivo: { type: object, additionalProperties: { type: integer } }
+                  latenciaMs:
+                    type: object
+                    nullable: true
+                    properties:
+                      p50: { type: integer }
+                      p95: { type: integer }
+                  instance: { type: string }
+        '403': { description: Sem permissão }
   /triagens/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -120,7 +149,7 @@ paths:
                     items: { type: string }
                   fontes:
                     type: array
-                    items: { type: string, example: 'Protocolo de Acolhimento MS, p. 42' }
+                    items: { $ref: '#/components/schemas/Fonte' }
   /triagens/{id}/feedback:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -163,11 +192,12 @@ components:
         classificacao: { $ref: '#/components/schemas/Urgencia' }
         justificativa: { type: string }
         especialidadeSugerida: { type: string }
-        confianca: { type: number, format: float, minimum: 0, maximum: 1 }
+        confianca: { type: number, format: float, minimum: 0, maximum: 1, nullable: true, description: Nula quando a origem é REGRAS }
         temporaria: { type: boolean }
         origem: { type: string, enum: [LLM, CACHE, REGRAS], description: Como a classificação foi obtida }
         fontes:
           type: array
+          description: Trechos recuperados da base. Vazio se a base estiver indisponível ou se nada passar do corte de similaridade.
           items: { $ref: '#/components/schemas/Fonte' }
         criadoEm: { type: string, format: date-time }
     Fonte:
@@ -175,7 +205,7 @@ components:
       properties:
         documento: { type: string, example: 'Caderno de Atenção Básica nº 28, vol. II' }
         secao: { type: string }
-        pagina: { type: integer }
+        pagina: { type: integer, nullable: true, description: Página impressa; nula no protocolo interno }
     Recomendacao:
       type: object
       properties:
@@ -195,6 +225,8 @@ components:
               slotId: { type: string, format: uuid }
               inicio: { type: string, format: date-time }
               especialidade: { type: string }
+              dentroDoPrazo: { type: boolean, description: Falso quando não há horário no prazo e são mostrados os próximos }
+        origemHorarios: { type: string, nullable: true, enum: [LLM, REGRAS], description: Quem escolheu os horários }
         orientacao: { type: string }
     Problem:
       type: object

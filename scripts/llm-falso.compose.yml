@@ -1,0 +1,9 @@
+# Usado so por scripts/verificar_llm.sh: troca o provedor por um servidor que fala a API do Gemini e provoca falhas.
+services:
+  gemini-falso:
+    image: python:3.12-slim
+    command: ["python", "-u", "/falso/gemini_falso.py", "9000"]
+    volumes: ["./services/triagem/tests:/falso:ro"]
+    networks: [backend]
+  triagem:
+    environment: { GEMINI_API_KEY: falsa, LLM_URL: "http://gemini-falso:9000" }

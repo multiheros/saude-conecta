@@ -19,5 +19,6 @@ data:
   LEITURA_REDIS_HOST: cache-agendamento
   TRIAGEM_DB_HOST: db-triagem
   TRIAGEM_DB_PORT: "27017"
+  TRIAGEM_VETORES_HOST: db-triagem-vetores
   NOTIFICACOES_DB_HOST: db-notificacoes
   NOTIFICACOES_DB_PORT: "6379"

@@ -11,9 +11,9 @@ Um BFF (*Backend for Frontend*) adapta as APIs de domínio às necessidades de *
 | Usuário | Cidadão, frequentemente em celular com rede fraca | Servidor municipal, desktop, rede estável |
 | Escopo de dados | **Somente os seus** (filtrado por `X-User-Id`) | **Todas as UBS** da jurisdição |
 | Formato | Enxuto, orientado a ação, textos prontos | Agregado, estatístico, séries temporais |
-| Serviços consumidos | Pacientes · Agendamento · Triagem | Pacientes · Agendamento · Notificações |
+| Serviços consumidos | Pacientes · Agendamento · Triagem | Pacientes · Agendamento · Notificações · Triagem (saúde da IA) |
 | Frequência | Muitas requisições pequenas | Poucas requisições pesadas |
-| Cache | Curto (TTL 30 s) ou nenhum | Longo (TTL 5 min; dados analíticos) |
+| Cache | Nenhum | 30 s por unidade e período (configurável) |
 | Dados sensíveis (LGPD) | Dados do próprio titular | **Anonimizados/agregados**; sem dados clínicos individuais |
 | Perfil JWT | `paciente` | `gestor` |
 | Disponibilidade | Crítica (agendar) | Tolerante a degradação |
@@ -32,7 +32,7 @@ Um BFF (*Backend for Frontend*) adapta as APIs de domínio às necessidades de *
 
 **Decisão:** 2 BFFs, cada um com **contrato, cache, autorização e escala próprios**, atrás do mesmo Gateway (rotas `/web/v1` e `/admin/v1`, ver [`gateway-routing.md`](gateway-routing.md)). Lógica de **domínio permanece nos serviços**; os BFFs só **orquestram leitura e adaptam** (nunca decidem regra de negócio).
 
-**Custos aceitos:** dois componentes a operar e possível duplicação de código de infraestrutura (mitigada por biblioteca compartilhada de clientes HTTP/observabilidade).
+**Custos aceitos:** dois componentes a operar e possível duplicação de código de infraestrutura (mitigada por `libs/comum`: cliente HTTP, erros, correlação e saúde).
 
 ## 2. Payload Diff — mesma entidade: **Agendamento**
 
@@ -49,7 +49,8 @@ Agrega: Agendamento + Triagem (orientações) + nome da UBS/profissional. ~**0,6
   "onde": "UBS Centro — Rua das Flores, 120",
   "profissional": "Dra. Ana Souza",
   "urgencia": { "nivel": "AMARELO", "texto": "Atendimento prioritário" },
-  "orientacoes": ["Leve cartão SUS e documento com foto", "Chegue 15 min antes"],
+  "orientacoes": ["Leve cartão SUS e documento com foto", "Chegue 15 minutos antes"],
+  "triagem": { "justificativa": "...", "origem": "LLM", "fontes": ["Caderno de Atenção Básica nº 28, vol. II, 2.2 Cefaleia, p. 32"] },
   "_links": {
     "self": { "href": "/web/v1/agendamentos/3fa85f64-...", "method": "GET" },
     "confirmar": { "href": "/web/v1/agendamentos/3fa85f64-.../confirmacao", "method": "POST" },
@@ -61,7 +62,7 @@ Agrega: Agendamento + Triagem (orientações) + nome da UBS/profissional. ~**0,6
 
 ### 2.2 `GET /admin/v1/agendamentos/resumo?ubsId=...&periodo=2026-11` — bff-admin (agregado, estatístico)
 
-Agrega: Agendamento (Read Model) + Pacientes (faixa etária/bairro, anonimizados) + Notificações (entrega/alertas). ~**2,5 KB** (cresce com a série).
+Agrega: Agendamento (Read Model) + Pacientes (faixa etária/bairro, anonimizados) + Notificações (alertas). O envio é simulado, então não há taxa de entrega. ~**2,5 KB** (cresce com a série).
 
 ```json
 {
@@ -79,12 +80,13 @@ Agrega: Agendamento (Read Model) + Pacientes (faixa etária/bairro, anonimizados
     { "data": "2026-11-03", "agendados": 52, "faltas": 4 },
     { "data": "2026-11-04", "agendados": 58, "faltas": 3 }
   ],
-  "notificacoes": { "enviadas": 2410, "falhas": 36, "taxaEntrega": 98.5 },
+  "pacientes": { "total": 1200, "porFaixaEtaria": { "18-59": 800 }, "porBairro": { "Centro": 400 } },
   "alertas": [
-    { "tipo": "GARGALO", "especialidade": "Clínica Geral", "mensagem": "Ocupação acima de 85% há 3 dias" }
+    { "tipo": "GARGALO", "especialidade": "Clínica Geral", "dia": "2026-11-05", "ocupacaoPercentual": 91.0, "mensagem": "Clínica Geral com 91% dos horários ocupados em 05/11/2026" }
   ],
   "geradoEm": "2026-11-05T10:00:03-03:00",
-  "defasagemSegundos": 2
+  "defasagemSegundos": 2,
+  "parcial": false
 }
 ```
 
@@ -98,11 +100,10 @@ Agrega: Agendamento (Read Model) + Pacientes (faixa etária/bairro, anonimizados
 | Navegação | `_links` (HATEOAS) → ações | Sem ações por registro; filtros por query |
 | Estatística | Nenhuma | Ocupação, absenteísmo, tendência, série |
 | Triagem | Orientações ao paciente | Distribuição por urgência |
-| Notificações | Não exibe | Taxa de entrega, falhas |
 | Alertas | — | Gargalos |
 | Origens | Agendamento + Triagem + Pacientes | Agendamento + Pacientes + Notificações |
 | Tamanho | ~0,6 KB | ~2,5 KB |
-| Cache | 30 s | 5 min |
+| Cache | Nenhum | 30 s |
 | Campos exclusivos | `titulo`, `quando`, `onde`, `orientacoes`, `_links` | `capacidade`, `porStatus`, `absenteismo`, `serieDiaria`, `alertas` |
 
 ### 2.4 Fluxo de composição
@@ -116,10 +117,9 @@ sequenceDiagram
     participant PA as Pacientes
     participant NO as Notificações
     Note over W: GET /web/v1/agendamentos/{id}
-    par em paralelo
-      W->>AG: GET /agendamentos/{id}
-      W->>TR: GET /triagens/{id}/orientacoes
-      W->>PA: GET /pacientes/{id}
+    W->>AG: GET /agendamentos/{id}
+    opt opcional
+      W->>TR: GET /triagens?sagaId
     end
     Note over A: GET /admin/v1/agendamentos/resumo
     par em paralelo
@@ -129,4 +129,17 @@ sequenceDiagram
     end
 ```
 
-**Resiliência:** ambos usam timeout curto e *degradação graciosa*. Se Triagem cair, `bff-web` omite `orientacoes`; se Notificações cair, `bff-admin` omite `notificacoes` e sinaliza `"parcial": true`.
+**Resiliência:** ambos usam timeout curto e *degradação graciosa*. Se Triagem cair, `bff-web` omite `triagem`; se Notificações ou Pacientes caírem, `bff-admin` devolve a parte nula e sinaliza `"parcial": true`.
+
+## 3. Rotas
+
+| `bff-web` (`/web/v1`) | `bff-admin` (`/admin/v1`) |
+|-----------------------|---------------------------|
+| `GET /home` | `GET /unidades` |
+| `POST /triagem` | `GET /agendamentos/resumo?ubsId&periodo` |
+| `GET /horarios` | `POST /escalas` |
+| `GET, POST /agendamentos` | `GET /saude-ia` |
+| `GET /agendamentos/{id}` e `/andamento` | |
+| `POST /agendamentos/{id}/confirmacao, reagendamento, cancelamento` | |
+
+No `bff-web`, paciente, idade e unidade vêm do cadastro, nunca do corpo da requisição.

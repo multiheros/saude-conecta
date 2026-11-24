@@ -18,8 +18,13 @@ services:
 
   triagem:
     build: { context: ./services/triagem, target: teste }
-    environment: { DB_HOST: mongo, RABBITMQ_HOST: rabbitmq, RABBITMQ_USER: teste, RABBITMQ_PASSWORD: teste }
-    depends_on: { mongo: { condition: service_healthy }, rabbitmq: { condition: service_healthy } }
+    environment: { DB_HOST: mongo, RABBITMQ_HOST: rabbitmq, RABBITMQ_USER: teste, RABBITMQ_PASSWORD: teste, CHROMA_HOST: chroma }
+    depends_on: { mongo: { condition: service_healthy }, rabbitmq: { condition: service_healthy }, chroma: { condition: service_started } }
+
+  bff-web:
+    build: { context: ., dockerfile: bff/web/Dockerfile, target: teste }
+  bff-admin:
+    build: { context: ., dockerfile: bff/admin/Dockerfile, target: teste }
 
   pg-agendamento: &pg
     image: postgres:16-alpine
@@ -35,6 +40,9 @@ services:
     image: mongo:7
     tmpfs: [/data/db]
     healthcheck: { test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"], interval: 3s, timeout: 5s, retries: 20 }
+  chroma:
+    image: chromadb/chroma:1.5.9
+    tmpfs: [/data]
   rabbitmq:
     build: ./infra/rabbitmq
     environment: { RABBITMQ_USER: teste, RABBITMQ_PASSWORD: teste }

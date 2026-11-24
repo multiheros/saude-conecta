@@ -1,40 +1,18 @@
 """Integracao contra MongoDB e RabbitMQ reais e descartaveis."""
 
 import json
-import os
 import threading
 import uuid
 
-import pika
 import pytest
-from fastapi.testclient import TestClient
 
 from app import regras
 from app.consumidor import esperar
-from app.main import app, repo
+from app.main import repo
+
+from conftest import conectar
 
 INTERNO = {"X-User-Role": "servico"}
-
-
-def conectar():
-    return pika.BlockingConnection(pika.ConnectionParameters(os.environ["RABBITMQ_HOST"], credentials=pika.PlainCredentials(os.environ["RABBITMQ_USER"], os.environ["RABBITMQ_PASSWORD"])))
-
-
-@pytest.fixture(scope="module")
-def cliente():
-    assert esperar(repo.ping, 20)
-    # O broker de teste e compartilhado: descarta eventos deixados por outros servicos.
-    cx = conectar()
-    cx.channel().queue_purge("triagem.agendamento")
-    cx.close()
-    with TestClient(app) as c:
-        yield c
-
-
-@pytest.fixture(autouse=True)
-def limpar():
-    repo.db.triagens.delete_many({})
-    repo.db.encerradas.delete_many({})
 
 
 def pedir(c, saga, sintomas="tosse e coriza ha dois dias", paciente=None, **extra):
@@ -121,6 +99,15 @@ def test_permissoes_e_validacao(cliente):
     assert cliente.get("/api/v1/triagens/inexistente", headers=INTERNO).status_code == 404
     fb = lambda papel: cliente.post(f"/api/v1/triagens/{t}/feedback", headers={"X-User-Role": papel}, json={"classificacaoMedico": "VERDE"}).status_code
     assert (fb("paciente"), fb("gestor")) == (403, 204)
+
+
+def test_consulta_pela_saga_respeita_o_dono(cliente):
+    s, eu = str(uuid.uuid4()), str(uuid.uuid4())
+    t = pedir(cliente, s, paciente=eu).json()
+    ver = lambda papel, quem, saga=s: cliente.get(f"/api/v1/triagens?sagaId={saga}", headers={"X-User-Role": papel, "X-User-Id": quem})
+    assert ver("paciente", eu).json() == t
+    assert (ver("paciente", str(uuid.uuid4())).status_code, ver("gestor", "").status_code) == (403, 200)
+    assert ver("paciente", eu, str(uuid.uuid4())).status_code == 404 and ver("paciente", eu, "x").status_code == 400
 
 
 def test_agendamento_criado_efetiva_e_mensagem_ruim_vai_para_dlq(cliente):

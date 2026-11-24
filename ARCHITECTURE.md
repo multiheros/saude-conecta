@@ -197,17 +197,17 @@ sequenceDiagram
     participant C as Cliente
     participant G as Gateway
     participant B as BFF / Serviço
-    C->>G: HTTPS
-    G->>G: 1. Termina TLS
+    C->>G: HTTPS (local: HTTP)
+    G->>G: 1. Termina TLS (não no ambiente local)
     G->>G: 2. Rate limit (100 req/min por IP)
     G->>G: 3. Valida JWT
-    G->>G: 4. Injeta X-User-Id e X-Correlation-Id
+    G->>G: 4. Confere o perfil e injeta X-User-Id, X-User-Role e X-Correlation-Id
     G->>B: HTTP interno + headers
     B-->>G: resposta
     G-->>C: resposta + X-Correlation-Id
 ```
 
-- O **rate limit vem antes do JWT** para proteger a validação criptográfica contra abuso.
+- O **rate limit vem antes do JWT** para proteger a validação criptográfica contra abuso. O Kong faz o contrário por padrão; um plugin próprio corrige a ordem.
 - O `X-Correlation-Id` acompanha a requisição até os eventos do RabbitMQ: rastreio de ponta a ponta.
 
 📄 Detalhes: [`gateway-routing.md`](docs/gateway-routing.md) — tabela de rotas completa, configuração do Kong, JWT e propagação de headers.

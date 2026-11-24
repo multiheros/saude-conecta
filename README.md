@@ -177,7 +177,7 @@ O **SaúdeConecta** é uma plataforma de **agendamento inteligente e triagem ass
 | Bancos de dados | PostgreSQL · MongoDB · Redis · ChromaDB |
 | Mensageria | RabbitMQ |
 | IA | LLM + RAG (LangChain + ChromaDB) |
-| API Gateway / BFFs | Kong/NGINX + 2 BFFs (web e admin) |
+| API Gateway / BFFs | Kong + 2 BFFs (web e admin) |
 | Frontends | React (app do paciente + painel do gestor) |
 | Infra | Docker + Docker Compose + Kubernetes |
 
@@ -224,7 +224,7 @@ Demonstração do sistema sendo levantado com Docker Compose e Kubernetes (Docke
 
 **[▶️ Assistir no YouTube](https://youtu.be/KnB0XyP8xoM)**
 
-> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A Parte 4, em andamento, substitui esses dados pela lógica real, e já cobre os 4 serviços com banco próprio, eventos, JWT, a **SAGA** completa e o **CQRS** do Agendamento.
+> Nesta etapa (Parte 3) os serviços são **versões mínimas** (`/live`, `/ready` e alguns endpoints do contrato OpenAPI, dados fixos) para demonstrar a containerização e a orquestração. A Parte 4, em andamento, substitui esses dados pela lógica real, e já cobre os 4 serviços com banco próprio, eventos, JWT, a **SAGA** completa, o **CQRS** do Agendamento a Triagem com **RAG** e **LLM**, e o gateway **Kong** com JWT.
 
 **Requisitos:** Docker 24+ com Compose v2. Para Kubernetes: `kubectl` e [`kind`](https://kind.sigs.k8s.io).
 
@@ -234,13 +234,16 @@ Demonstração do sistema sendo levantado com Docker Compose e Kubernetes (Docke
 docker compose up -d --build
 ```
 
+Para usar o LLM na triagem, copie `.env.example` para `.env` e preencha `GEMINI_API_KEY` antes de subir. Sem a chave, a triagem funciona por regras.
+
 Entrada única pelo gateway: `http://localhost:8080`
 
 ```bash
-curl http://localhost:8080/web/v1/home       # BFF do paciente (dados simples)
-curl http://localhost:8080/admin/v1/painel   # BFF do gestor (dados agregados)
-curl -X POST http://localhost:8080/api/v1/auth/login -H 'content-type: application/json' \
-     -d '{"cpf":"10000000108","senha":"demo12345"}'   # paciente fictício (gestora: 90000000175)
+# Paciente fictício 10000000108; gestora 90000000175 (troque o CPF e a rota)
+TOKEN=$(curl -s http://localhost:8080/api/v1/auth/login -H 'content-type: application/json' \
+     -d '{"cpf":"10000000108","senha":"demo12345"}' | sed 's/.*accessToken":"\([^"]*\).*/\1/')
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/web/v1/home        # BFF do paciente
+# BFF do gestor: http://localhost:8080/admin/v1/unidades, com o token da gestora
 ```
 
 ```bash
@@ -257,10 +260,10 @@ kind create cluster --config k8s/cluster/kind-config.yaml
 # 2. imagens (build local e carga no cluster)
 for s in pacientes agendamento notificacoes; do docker build -t saudeconecta/$s:1.0 -f services/$s/Dockerfile .; done
 docker build -t saudeconecta/triagem:1.0 services/triagem
-docker build -t saudeconecta/bff-web:1.0 bff/web
-docker build -t saudeconecta/bff-admin:1.0 bff/admin
+for b in web admin; do docker build -t saudeconecta/bff-$b:1.0 -f bff/$b/Dockerfile .; done
+docker build -t saudeconecta/gateway:1.0 gateway
 docker build -t saudeconecta/rabbitmq:1.0 infra/rabbitmq
-for i in pacientes agendamento triagem notificacoes bff-web bff-admin rabbitmq; do kind load docker-image saudeconecta/$i:1.0 --name saudeconecta; done
+for i in pacientes agendamento triagem notificacoes bff-web bff-admin gateway rabbitmq; do kind load docker-image saudeconecta/$i:1.0 --name saudeconecta; done
 
 # 3. Ingress controller
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml
@@ -316,6 +319,8 @@ Limpeza: `kind delete cluster --name saudeconecta`. Detalhes de redes, volumes, 
 | [`docs/api/`](docs/api/) | Contratos OpenAPI dos 4 serviços *(Parte 2)* |
 | [`docs/decisoes-tecnicas/api-guidelines.md`](docs/decisoes-tecnicas/api-guidelines.md) | Versionamento por URI e HATEOAS *(Parte 2)* |
 | [`docs/decisoes-tecnicas/outbox-e-consistencia.md`](docs/decisoes-tecnicas/outbox-e-consistencia.md) | Consistência eventual, Dual Write e Transactional Outbox *(Parte 2)* |
+| [`docs/arquitetura/rag-triagem.md`](docs/arquitetura/rag-triagem.md) | RAG da Triagem: base, embeddings, ChromaDB e recuperação |
+| [`docs/arquitetura/llm-triagem.md`](docs/arquitetura/llm-triagem.md) | LLM da Triagem: chains, tool, resiliência e privacidade |
 | `docs/rag-avaliacao.md` | Avaliação do pipeline RAG *(Parte 4)* |
 
 ---

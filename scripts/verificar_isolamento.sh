@@ -12,7 +12,7 @@ ok()   { echo "  ok    $1"; }
 erro() { echo "  FALHA $1"; falhas=$((falhas + 1)); }
 
 # servidor:porta:dono
-BANCOS="db-pacientes:5432:pacientes db-agendamento:5432:agendamento db-agendamento-leitura:27017:agendamento cache-agendamento:6379:agendamento db-triagem:27017:triagem db-notificacoes:6379:notificacoes"
+BANCOS="db-pacientes:5432:pacientes db-agendamento:5432:agendamento db-agendamento-leitura:27017:agendamento cache-agendamento:6379:agendamento db-triagem:27017:triagem db-triagem-vetores:8000:triagem db-notificacoes:6379:notificacoes cache-gateway:6379:gateway"
 ORIGENS="pacientes agendamento triagem notificacoes bff-web bff-admin gateway"
 
 ip_de() {
@@ -33,7 +33,7 @@ try:
 except OSError:
     print('FECHADA')" 2>&1) ;;
     gateway)
-      saida=$(docker compose exec -T "$origem" sh -c "nc -zw2 $host $porta 2>/dev/null && echo ABERTA || echo FECHADA" 2>&1) ;;
+      saida=$(docker compose exec -T "$origem" bash -c "timeout 2 bash -c 'exec 3<>/dev/tcp/$host/$porta' 2>/dev/null && echo ABERTA || echo FECHADA" 2>&1) ;;
     *)
       saida=$(docker compose exec -T "$origem" node -e "
 const s = require('net').connect({ host: '$host', port: $porta, timeout: 2000 });
@@ -75,7 +75,7 @@ for pg in pacientes agendamento; do
     psql -h "$(ip_de "db-$pg")" -U "$pg" -d "$pg" -w -c 'select 1' 2>&1)
   [[ $saida == *"password authentication failed"* ]] && ok "db-$pg recusa senha errada" || erro "db-$pg: $saida"
 done
-for r in db-notificacoes cache-agendamento; do
+for r in db-notificacoes cache-agendamento cache-gateway; do
   saida=$(docker compose exec -T $r sh -c 'unset REDISCLI_AUTH; redis-cli ping' 2>&1)
   [[ $saida == *NOAUTH* ]] && ok "$r recusa sem senha" || erro "$r respondeu: $saida"
 done
