@@ -10,7 +10,7 @@ FROM deps AS teste
 COPY libs/comum ./libs/comum
 COPY services/agendamento ./services/agendamento
 WORKDIR /app/services/agendamento
-CMD ["node", "--test", "--test-reporter=spec", "test/*.test.js"]
+CMD ["node", "--test", "--test-concurrency=1", "--test-reporter=spec", "test/*.test.js"]
 
 # Estagio final: imagem enxuta, sem npm cache, rodando como usuario nao-root
 FROM node:22-alpine
