@@ -31,7 +31,7 @@ espera() { for _ in $(seq 60); do [ "$(eval "$1")" = "$2" ] && return; sleep 0.2
 pronto() { for _ in $(seq 100); do [ "$(js "try{console.log((await fetch('http://$1/ready')).status)}catch{}")" = 200 ] && return; sleep 0.3; done; falha "$1 nao ficou pronto"; }
 
 echo "0. Subindo os quatro servicos"
-docker compose up -d --build agendamento pacientes triagem notificacoes rabbitmq >/dev/null 2>&1 || falha "nao subiu"
+SUBIDA=$(docker compose up -d --build agendamento pacientes triagem notificacoes rabbitmq 2>&1) || falha "nao subiu: $(grep -iE 'error|unhealthy|failed' <<< "$SUBIDA" | tail -3)"
 for s in 127.0.0.1:8002 pacientes:8001 triagem:8003 notificacoes:8004; do pronto $s; done
 ok "prontos"
 

@@ -34,7 +34,7 @@ buscar() { dc exec -T triagem python -m app.rag.busca "$1"; }
 demora() { js "const t=Date.now(),r=await fetch('http://triagem:8003/api/v1/triagens',{method:'POST',headers:{...J,'X-User-Role':'servico','X-Saga-Id':crypto.randomUUID()},body:JSON.stringify({pacienteId:'$(P 9)',sintomas:'dor no peito desde ontem'})});console.log(r.status,(await r.json()).fontes.length>0,Date.now()-t<2500)"; }
 
 echo "0. Subindo a stack"
-docker compose up -d --build agendamento pacientes triagem notificacoes rabbitmq db-triagem-vetores triagem-ingestao >/dev/null 2>&1 || falha "nao subiu"
+SUBIDA=$(docker compose up -d --build agendamento pacientes triagem notificacoes rabbitmq db-triagem-vetores triagem-ingestao 2>&1) || falha "nao subiu: $(grep -iE 'error|unhealthy|failed' <<< "$SUBIDA" | tail -3)"
 for s in 127.0.0.1:8002 pacientes:8001 triagem:8003 notificacoes:8004; do pronto $s; done
 ok "servicos prontos antes da base: a triagem nao espera por ela"
 

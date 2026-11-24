@@ -37,7 +37,7 @@ escrita() { sql "SELECT (SELECT string_agg(status||'='||n, ' ' ORDER BY status) 
 leitura() { mongo "const a=db.agendamentos_view.aggregate([{\$group:{_id:'\$status',n:{\$sum:1}}},{\$sort:{_id:1}}]).toArray().map((x)=>x._id+'='+x.n).join(' ');const o=db.ocupacao_ubs.aggregate([{\$group:{_id:null,t:{\$sum:'\$total'},r:{\$sum:'\$reservados'}}}]).toArray()[0];print(a+' | '+o.t+' '+o.r)"; }
 
 echo "0. Subindo a stack"
-docker compose up -d --build agendamento pacientes triagem notificacoes rabbitmq db-agendamento-leitura cache-agendamento >/dev/null 2>&1 || falha "nao subiu"
+SUBIDA=$(docker compose up -d --build agendamento pacientes triagem notificacoes rabbitmq db-agendamento-leitura cache-agendamento 2>&1) || falha "nao subiu: $(grep -iE 'error|unhealthy|failed' <<< "$SUBIDA" | tail -3)"
 for s in 127.0.0.1:8002 pacientes:8001 triagem:8003 notificacoes:8004; do pronto $s; done
 espera "saude rabbitmq" up; espera consumindo true; espera "saude leitura" up; espera "saude cache" up; espera "oferece $(livre 0)" true; ok "pronta, vagas do seed projetadas"
 
