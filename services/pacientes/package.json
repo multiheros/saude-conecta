@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "dependencies": { "express": "4.21.2" }
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "amqplib": "2.4.1",
+    "express": "4.21.2",
+    "jsonwebtoken": "9.0.3",
+    "pg": "8.23.1"
+  }
 }

@@ -16,7 +16,9 @@ paths:
   /auth/login:
     post:
       tags: [Autenticação]
-      summary: Autentica o paciente e emite JWT
+      summary: Autentica paciente ou gestor e emite JWT (RS256)
+      description: |
+        Claims: `sub` (id), `role` (paciente | gestor), `iss` (saudeconecta-<role>), `aud` (saudeconecta), `exp` (1 h).
       security: []
       requestBody:
         required: true
@@ -84,7 +86,8 @@ paths:
       summary: Estatísticas anonimizadas da população atendida (bff-admin)
       description: |
         Apenas contagens agregadas (LGPD): nenhum nome, CPF ou contato é retornado.
-        Grupos com menos de 5 pacientes são suprimidos para evitar reidentificação.
+        Grupos com menos de 5 pacientes são suprimidos e os números arredondados para múltiplos de 5,
+        para que o grupo oculto não saia por subtração do total.
       parameters:
         - { name: ubsId, in: query, required: true, schema: { type: string, format: uuid } }
       responses:
@@ -157,7 +160,7 @@ paths:
       tags: [Pacientes]
       summary: (SAGA passo 2) Valida paciente e marca "agendamento em andamento"
       description: |
-        Chamado pelo orquestrador; idempotente para o mesmo `X-Saga-Id`. Compensação é `DELETE` neste
+        Chamado pelo orquestrador (perfil interno `servico`); idempotente para o mesmo `X-Saga-Id`. Compensação é `DELETE` neste
         mesmo recurso. No sucesso, a flag é limpa ao consumir o evento `AgendamentoCriado`.
       parameters:
         - { name: X-Saga-Id, in: header, required: true, description: SAGA dona da flag, schema: { type: string, format: uuid } }
@@ -173,7 +176,7 @@ paths:
                   agendamentoEmAndamento: { type: boolean }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
-          description: Paciente inativo ou já com agendamento em andamento
+          description: Paciente inativo, já com agendamento em andamento, ou SAGA já encerrada (pedido atrasado)
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -248,6 +251,7 @@ components:
         dataNascimento: { type: string, format: date }
         email: { type: string, format: email }
         telefone: { type: string, example: '+5535999990000' }
+        bairro: { type: string }
         senha: { type: string, format: password, minLength: 8 }
         ubsReferenciaId: { type: string, format: uuid }
     PacienteUpdate:
@@ -256,6 +260,7 @@ components:
         nome: { type: string }
         email: { type: string, format: email }
         telefone: { type: string }
+        bairro: { type: string }
         ubsReferenciaId: { type: string, format: uuid }
     Paciente:
       type: object
@@ -266,6 +271,7 @@ components:
         dataNascimento: { type: string, format: date }
         email: { type: string, format: email }
         telefone: { type: string }
+        bairro: { type: string }
         ubsReferenciaId: { type: string, format: uuid }
         ativo: { type: boolean }
         criadoEm: { type: string, format: date-time }
@@ -276,7 +282,7 @@ components:
         data: { type: string, format: date-time }
         especialidade: { type: string }
         ubs: { type: string }
-        status: { type: string, enum: [REALIZADO, FALTOU, CANCELADO] }
+        status: { type: string, enum: [REALIZADO, FALTOU] }
     Problem:
       type: object
       description: RFC 7807 (Problem Details)

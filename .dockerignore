@@ -1,0 +1,5 @@
+# O contexto de build e a raiz: so entra o que as imagens usam.
+*
+!libs
+!services
+**/node_modules

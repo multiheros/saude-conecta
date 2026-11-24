@@ -146,7 +146,7 @@ A ordem importa: **rate limit antes do JWT** protege a validação criptográfic
 | Header | Origem | Uso |
 |--------|--------|-----|
 | `X-User-Id` | Claim `sub` do JWT, injetado pelo Gateway | Identificar o usuário sem reparsear o token; autorização por dono do recurso |
-| `X-User-Role` | Claim `role` | Autorização por perfil |
+| `X-User-Role` | Claim `role` | Autorização por perfil. O valor `servico` só existe na rede interna (passos da SAGA); o gateway nunca o emite |
 | `X-Correlation-Id` | Gerado (UUID) se ausente; preservado se enviado | Rastrear a requisição ponta a ponta e a SAGA (logs, eventos RabbitMQ) |
 | `Authorization` | Original | Repassado para chamadas serviço-a-serviço quando necessário |
 

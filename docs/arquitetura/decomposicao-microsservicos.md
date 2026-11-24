@@ -135,16 +135,16 @@ flowchart TB
 | Evento (v1) | Produtor | Consumidores | Efeito |
 |-------------|----------|--------------|--------|
 | `AgendamentoSolicitado` | Agendamento | Agendamento (projetor) | Cria a visão em `PENDENTE` |
-| `SlotReservado` / `SlotLiberado` | Agendamento | Agendamento (projetor) | Atualiza slots livres e ocupação (CQRS) |
-| `AgendamentoCriado` | Agendamento (SAGA concluída) | projetor, Pacientes, Triagem | Visão em `AGENDADO`; limpa a flag "em andamento"; triagem deixa de ser temporária |
+| `SlotReservado` / `SlotLiberado` | Agendamento | projetor, Notificações | Slots livres e ocupação (CQRS); alerta de gargalo (≥ 85% do dia) |
+| `AgendamentoCriado` | Agendamento (SAGA concluída) | projetor, Pacientes, Triagem, Notificações | Visão em `AGENDADO`; limpa a flag "em andamento"; triagem deixa de ser temporária; libera o envio |
 | `AgendamentoConfirmado` | Agendamento | projetor | Visão em `CONFIRMADO` |
 | `AgendamentoReagendado` | Agendamento | projetor, Notificações | Troca o horário; refaz os lembretes |
 | `AgendamentoCancelado` | Agendamento | projetor, Notificações | Visão em `CANCELADO`; cancela lembretes |
 | `AtendimentoRealizado` / `FaltaRegistrada` | Agendamento | projetor, Pacientes | Histórico e métricas de absenteísmo |
-| `EscalaCriada` | Agendamento | projetor | Carrega os novos slots livres |
+| `EscalaCriada` | Agendamento | projetor, Notificações | Carrega os novos slots livres; capacidade do dia |
 | `PacienteAtualizado` | Pacientes | Agendamento | Atualiza cópia local de dados de exibição |
 
-> Os lembretes são **criados só pelo passo 4 da SAGA**. Eventos apenas os cancelam ou refazem, o que evita notificação duplicada.
+> Os lembretes são **criados só pelo passo 4 da SAGA** e ficam retidos até `AgendamentoCriado`. Eventos apenas os liberam, cancelam ou refazem, o que evita notificação duplicada.
 
 | Característica | Decisão |
 |----------------|---------|
@@ -171,6 +171,7 @@ flowchart TB
 
 - **Nenhum serviço lê o banco do outro** (Database per Service): cada banco é uma **instância própria** (container/StatefulSet separado, com volume e credenciais exclusivas). Mesmo onde a tecnologia se repete (PostgreSQL em Pacientes e Agendamento; MongoDB em Triagem e no Read Model de Agendamento), não há servidor compartilhado: a falha ou a migração de um banco não atinge outro serviço.
 - Se **Notificações** cair, os eventos que ela consome esperam na fila. O passo 4 da SAGA, porém, é síncrono: novos agendamentos são **compensados** até o serviço voltar (decisão e trade-off em [`saga-agendamento.md`](saga-agendamento.md)).
+- **Envio no máximo uma vez:** Notificações retira da agenda e marca como enviada numa única operação atômica no Redis. Uma queda nesse instante pode perder um envio, mas nunca o repete.
 - Dados replicados (ex.: nome do paciente para exibição) são **cópias eventualmente consistentes**, nunca fonte de verdade.
 - O Orquestrador mora no serviço de **Agendamento** (dono do processo de negócio), evitando um 5º serviço.
 

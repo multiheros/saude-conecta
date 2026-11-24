@@ -1,5 +1,5 @@
 // Dados ficticios de demonstracao. Os IDs sao fixos porque outros servicos os referenciam.
-const { transacao } = require('./db');
+const { transacao } = require('../../../libs/comum/db');
 const { criarEscala } = require('./agenda');
 
 const UBS = [

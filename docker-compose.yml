@@ -35,14 +35,34 @@ services:
 
   # ---------- Servicos de dominio (cada um com seu banco) ----------
   pacientes:
-    build: ./services/pacientes
+    build: { context: ., dockerfile: services/pacientes/Dockerfile }
     <<: *svc-defaults
-    environment: { DB_HOST: db-pacientes, DB_PORT: "5432" }
-    networks: [backend, data-pacientes]
-    depends_on: { db-pacientes: { condition: service_healthy } }
+    environment:
+      DB_HOST: db-pacientes
+      DB_PORT: "5432"
+      DB_NAME: pacientes
+      DB_USER: ${PACIENTES_DB_USER:-pacientes}
+      DB_PASSWORD: ${PACIENTES_DB_PASSWORD:-troque-me-pacientes}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-saude}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-troque-me-rabbit}
+      JWT_CHAVE_PRIVADA: /chaves/jwt.pem
+      SEED: "true" # dados ficticios de demonstracao
+      SEED_SENHA: ${SEED_SENHA:-demo12345}
+    volumes: [chave-privada:/chaves:ro]
+    networks: [backend, mensageria, data-pacientes]
+    depends_on:
+      db-pacientes: { condition: service_healthy }
+      chaves: { condition: service_completed_successfully }
+
+  # Gera o par de chaves do JWT uma unica vez. So Pacientes monta a privada.
+  chaves:
+    build: ./infra/chaves
+    volumes: [chave-privada:/privada, chave-publica:/publica]
+    network_mode: none
 
   agendamento:
-    build: ./services/agendamento
+    build: { context: ., dockerfile: services/agendamento/Dockerfile }
     <<: *svc-defaults
     environment:
       DB_HOST: db-agendamento
@@ -66,10 +86,16 @@ services:
     depends_on: { db-triagem: { condition: service_healthy } }
 
   notificacoes:
-    build: ./services/notificacoes
+    build: { context: ., dockerfile: services/notificacoes/Dockerfile }
     <<: *svc-defaults
-    environment: { DB_HOST: db-notificacoes, DB_PORT: "6379" }
-    networks: [backend, data-notificacoes]
+    environment:
+      DB_HOST: db-notificacoes
+      DB_PORT: "6379"
+      DB_PASSWORD: ${NOTIFICACOES_DB_PASSWORD:-troque-me-notificacoes}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-saude}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-troque-me-rabbit}
+    networks: [backend, mensageria, data-notificacoes]
     depends_on: { db-notificacoes: { condition: service_healthy } }
 
   # ---------- Bancos: instancias separadas, volume proprio ----------
@@ -169,3 +195,5 @@ volumes:
   triagem-data:
   notificacoes-data:
   rabbitmq-data:
+  chave-privada:
+  chave-publica:
