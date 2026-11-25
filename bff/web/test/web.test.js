@@ -13,6 +13,7 @@ const agendamento = (x = {}) => ({
   profissional: { id: 'b1', nome: 'Dra. Ana Souza' }, ubs: { id: UBS, nome: 'UBS Centro', endereco: 'Rua das Flores, 120' }, classificacaoUrgencia: 'AMARELO', sagaId: SAGA, versao: 2,
   _links: { self: { href: `/api/v1/agendamentos/${AG}`, method: 'GET' }, cancelar: { href: `/api/v1/agendamentos/${AG}/cancelamento`, method: 'POST' } }, ...x,
 });
+const em = (dias) => ({ dataHora: new Date(Date.now() + dias * 864e5).toISOString() });
 let d, c;
 before(async () => {
   d = await dominioFalso();
@@ -23,7 +24,7 @@ beforeEach(() => {
   d.pedidos.length = 0; d.atraso = {};
   d.respostas = {
     [`GET /api/v1/pacientes/${EU}`]: { id: EU, nome: 'Maria Demo', cpf: '10000000108', dataNascimento: '1986-05-10', ubsReferenciaId: UBS },
-    'GET /api/v1/agendamentos': { items: [agendamento(), agendamento({ status: 'CANCELADO' })], total: 2 },
+    'GET /api/v1/agendamentos': { items: [agendamento(em(3)), agendamento(em(1)), agendamento(em(-1)), agendamento({ status: 'CANCELADO', ...em(2) })], total: 4 },
     [`GET /api/v1/agendamentos/${AG}`]: agendamento(),
     'GET /api/v1/triagens': { justificativa: 'Regra: dor intensa.', origem: 'REGRAS', fontes: [{ documento: 'Caderno', secao: '2.2 Cefaleia', pagina: 32 }, { documento: 'Protocolo', secao: 'Dor', pagina: null }] },
   };
@@ -51,9 +52,10 @@ test('identidade e correlacao vao para o dominio, e o BFF tem barreira propria',
   assert.equal(d.pedidos.length, 0);
 });
 
-test('home mostra so os ativos e abre mesmo com Agendamento fora', async () => {
+test('home mostra so os ativos que ainda vao acontecer, por data, e abre mesmo com Agendamento fora', async () => {
   let r = await c.pedir('GET', '/home');
-  assert.deepEqual([r.corpo.nome, r.corpo.proximos.length, r.corpo.parcial], ['Maria Demo', 1, undefined]);
+  assert.deepEqual([r.corpo.nome, r.corpo.proximos.length, r.corpo.parcial], ['Maria Demo', 2, undefined]);
+  assert.ok(r.corpo.proximos[0].dataHora < r.corpo.proximos[1].dataHora);
   assert.ok(!JSON.stringify(r.corpo).includes('10000000108'));
   d.respostas['GET /api/v1/agendamentos'] = [503, {}];
   r = await c.pedir('GET', '/home');

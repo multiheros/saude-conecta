@@ -4,7 +4,9 @@ const os = require('os');
 const { randomUUID } = require('crypto');
 const { Problema } = require('./erros');
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// So texto casa: RegExp.test converteria ["x"] em "x" e a lista chegaria ao banco.
+const padrao = (re) => ({ test: (v) => typeof v === 'string' && re.test(v) });
+const UUID = padrao(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 const inteiro = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 const invalido = (detalhe) => new Problema(422, 'Dados inválidos', detalhe);
 const rota = (fn) => (req, res, next) => fn(req, res).catch(next);
@@ -21,13 +23,21 @@ function exigirDono(req, pacienteId) {
   throw new Problema(403, 'Sem permissão');
 }
 
+// Erros do pedido que chegam como excecao: corpo recusado pelo Express e texto que o PostgreSQL nao aceita (byte nulo).
+function traduzir(e) {
+  if (e.type === 'entity.parse.failed') return new Problema(400, 'JSON inválido');
+  if (e.type === 'entity.too.large') return new Problema(413, 'Corpo grande demais');
+  if (e.expose && e.status >= 400 && e.status < 500) return new Problema(e.status, 'Requisição inválida');
+  return e.code === '22021' ? invalido('O texto contém um caractere não permitido.') : null;
+}
+
 // `pronto` devolve um objeto { dependencia: 'up'|'down' }; `essencial` e a que define 200/503.
 function criarApp({ nome, rotas, pronto, essencial = 'db', metricas, prefixo = '/api/v1' }) {
   const instance = os.hostname();
   const app = express();
   app.disable('x-powered-by');
   app.use((req, res, next) => {
-    req.correlationId = req.get('X-Correlation-Id') || randomUUID();
+    req.correlationId = (req.get('X-Correlation-Id') || randomUUID()).slice(0, 64); // cabe na coluna; pode vir de fora
     res.set('X-Correlation-Id', req.correlationId);
     res.set('X-Instance', instance); // qual replica respondeu
     const t0 = Date.now();
@@ -52,12 +62,11 @@ function criarApp({ nome, rotas, pronto, essencial = 'db', metricas, prefixo = '
   app.use(prefixo, rotas);
   app.use((_req, _res, next) => next(new Problema(404, 'Recurso não encontrado')));
   app.use((e, req, res, _next) => {
-    const jsonInvalido = e.type === 'entity.parse.failed';
-    const status = e instanceof Problema ? e.status : jsonInvalido ? 400 : 500;
+    const p = e instanceof Problema ? e : traduzir(e);
+    const status = p ? p.status : 500;
     if (status === 500) console.error(JSON.stringify({ nivel: 'erro', servico: nome, correlationId: req.correlationId, erro: e.stack }));
     res.status(status).type('application/problem+json').json({
-      type: 'about:blank', title: e instanceof Problema ? e.title : jsonInvalido ? 'JSON inválido' : 'Erro interno',
-      status, detail: e instanceof Problema ? e.detail : undefined, correlationId: req.correlationId,
+      type: 'about:blank', title: p ? p.title : 'Erro interno', status, detail: p ? p.detail : undefined, correlationId: req.correlationId,
     });
   });
   return app;
@@ -78,4 +87,4 @@ function aoEncerrar(server, ...passos) {
   process.on('SIGINT', fim);
 }
 
-module.exports = { UUID, inteiro, invalido, rota, exigirPerfil, exigirDono, criarApp, aoEncerrar };
+module.exports = { UUID, padrao, inteiro, invalido, rota, exigirPerfil, exigirDono, criarApp, aoEncerrar };

@@ -448,7 +448,7 @@ def test_api(cliente, t, gemini, agenda, monkeypatch):
     rec = lambda papel, c=corpo: cliente.post("/api/v1/triagens/recomendacoes", headers={"X-User-Role": papel} if papel else {}, json=c)  # noqa: E731
     assert rec("paciente").json()["horarios"][0]["slotId"] == slot and rec("paciente").json()["origem"] == "CACHE"
     assert [rec(p).status_code for p in (None, "outro", "gestor", "servico")] == [403, 403, 200, 200]
-    assert [rec("paciente", corpo | x).status_code for x in ({"sintomas": "oi"}, {"ubsId": "x"}, {"idade": 200})] == [422] * 3
+    assert [rec("paciente", corpo | x).status_code for x in ({"sintomas": "oi"}, {"sintomas": " " * 12}, {"ubsId": "x"}, {"idade": 200})] == [422] * 4
     assert repo.db.triagens.count_documents({}) == 1  # recomendar nao grava
 
     s = cliente.get("/api/v1/triagens/saude-llm", headers={"X-User-Role": "gestor"}).json()

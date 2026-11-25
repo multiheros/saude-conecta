@@ -6,27 +6,28 @@ const SITUACAO = {
   AGUARDANDO: ['…', 'aguardando'], CONCLUIDO: ['✓', 'concluído'], FALHOU: ['✕', 'não deu certo'],
   DESFEITO: ['↺', 'desfeito'], NAO_EXECUTADO: ['–', 'não foi necessário'],
 };
-const INTERVALO = 800, LIMITE_FALHAS = 5;
+const INTERVALO = 800, INTERVALO_LONGO = 4000, LIMITE_FALHAS = 5;
 
 export default function Andamento({ id }) {
   const [a, setA] = useState(null);
   const [erro, setErro] = useState(null);
   const [vez, setVez] = useState(0);
   useEffect(() => {
-    let vivo = true, falhas = 0, relogio;
+    let vivo = true, falhas = 0, pendente = false, relogio; // pendente: um servico fora; pode demorar
     async function consultar() {
       try {
         const r = await api.get(`/web/v1/agendamentos/${id}/andamento`);
         if (!vivo) return;
         falhas = 0;
         setA(r);
+        pendente = r.estado === 'COMPENSACAO_PENDENTE';
         setErro(null);
         if (r.terminou) return;
       } catch (e) {
         if (!vivo) return;
         if (++falhas >= LIMITE_FALHAS) { setErro(e); return; }
       }
-      relogio = setTimeout(consultar, INTERVALO * (1 + falhas));
+      relogio = setTimeout(consultar, pendente ? INTERVALO_LONGO : INTERVALO * (1 + falhas));
     }
     consultar();
     return () => { vivo = false; clearTimeout(relogio); };
@@ -47,12 +48,13 @@ export default function Andamento({ id }) {
       </ol>
       <div role="status">
         {falhou && <div className="aviso aviso-alerta"><strong>{a.motivo || 'O pedido não pôde ser concluído.'}</strong><p>Nada ficou reservado no seu nome.</p></div>}
+        {desfazendo && a.motivo && <div className="aviso aviso-alerta"><strong>{a.motivo}</strong><p>Você pode sair desta tela: terminamos de desfazer sozinhos.</p></div>}
       </div>
       <Erro erro={erro} tentar={() => setVez(vez + 1)} />
       <p className="acoes">
         {ok && <a className="botao" href={`#/agendamentos/${id}`}>Ver a consulta</a>}
         {falhou && <a className="botao" href="#/nova">Tentar de novo</a>}
-        {a.terminou && <a className="botao secundario" href="#/">Início</a>}
+        {(a.terminou || desfazendo) && <a className="botao secundario" href="#/">Início</a>}
       </p>
     </>
   );

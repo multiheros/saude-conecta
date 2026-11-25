@@ -34,7 +34,7 @@ export function Erro({ erro, tentar }) {
   return (
     <div className="aviso aviso-erro" role="alert">
       <strong>{erro.titulo || 'Algo deu errado'}</strong>
-      <p>{erro.message}</p>
+      {erro.message !== erro.titulo && <p>{erro.message}</p>}
       {erro.correlacao && <p className="miudo">Código para o suporte: {erro.correlacao}</p>}
       {tentar && <button className="botao secundario" onClick={tentar}>Tentar de novo</button>}
     </div>

@@ -2,19 +2,20 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { transacao } = require('../../../libs/comum/db');
 const { Problema } = require('../../../libs/comum/erros');
-const { UUID, inteiro, invalido, exigirPerfil, exigirDono, rota } = require('../../../libs/comum/http');
+const { UUID, padrao, inteiro, invalido, exigirPerfil, exigirDono, rota } = require('../../../libs/comum/http');
 const dominio = require('./pacientes');
 const { gerarHash, conferir } = require('./senha');
 const { cpfValido } = require('./cpf');
 
 const EXPIRA_EM = 3600;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const TELEFONE = /^\+?\d{10,15}$/;
+const TELEFONE = padrao(/^\+?\d{10,15}$/);
+const DATA = padrao(/^\d{4}-\d{2}-\d{2}$/);
 const texto = (v, min, max) => typeof v === 'string' && v.trim().length >= min && v.length <= max;
 
 const dia = (d) => [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, '0')).join('-');
 function dataValida(v) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  if (!DATA.test(v)) return false;
   const d = new Date(`${v}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(v) && d < new Date() && d.getUTCFullYear() >= 1900;
 }

@@ -11,7 +11,7 @@ NIVEIS = ["VERMELHO", "LARANJA", "AMARELO", "VERDE", "AZUL"]
 # (nivel, padrao, motivo). Texto ja normalizado: minusculas e sem acentos.
 SINAIS = [
     ("VERMELHO", r"(nao consig\w+|dificuldade para|sem conseguir) respirar", "dificuldade respiratória grave"),
-    ("VERMELHO", r"falta de ar (intensa|forte|muito forte|grave)", "falta de ar intensa"),
+    ("VERMELHO", r"falta d(e |.?)ar (intensa|forte|muito forte|grave)", "falta de ar intensa"),
     # Dor no peito com irradiacao ou suor frio, em qualquer ordem: suspeita de infarto.
     ("VERMELHO", r"(dor|aperto|peso|pressao|queimacao)\b.{0,25}\bpeito\b.*(braco|queixo|mandibula|pescoco|suando|suor|suo\b)|(suando frio|suor frio|suando gelado).*(aperto|dor|peso).{0,25}peito", "dor no peito com sinais de infarto"),
     ("VERMELHO", r"(lingua|garganta|boca).{0,20}(inchando|inchad\w|fechando).*(ar|respirar|rouc\w|voz)|(rouc\w|falta de ar).*(lingua|garganta).{0,20}inchad?\w*", "reação alérgica grave"),
@@ -21,9 +21,9 @@ SINAIS = [
     ("VERMELHO", r"convuls\w+|convulsionand\w", "convulsão"),
     ("VERMELHO", r"hemorragia|sangramento (intenso|que nao para)|sangrando muito", "sangramento intenso"),
     ("VERMELHO", r"boca torta|fala (enrolada|arrastada)|fraqueza (de|em) um lado|rosto torto", "sinais de AVC"),
-    ("VERMELHO", r"(quero|penso em|pensando em|vontade de) (me matar|morrer|tirar minha vida)|suicid\w+", "risco de suicídio"),
+    ("VERMELHO", r"(quero|penso em|pensando em|vontade de) (me matar|morrer|tirar (a )?(minha|propria) (propria )?vida)|nao quero mais viver|suicid\w+", "risco de suicídio"),
     ("LARANJA", r"dor (forte )?no peito|aperto no peito|dor toracica", "dor no peito"),
-    ("LARANJA", r"falta de ar", "falta de ar"),
+    ("LARANJA", r"falta d(e |.?)ar\b", "falta de ar"),
     ("LARANJA", r"\bchia(do|ndo)\b|cansad\w (para|pra) respirar", "chiado ou cansaço para respirar"),
     ("VERMELHO", r"pressao.*(vista|visao).{0,15}(embac\w+|turv\w)|(vista|visao).{0,15}(embac\w+|turv\w).*pressao", "pressão alta com alteração da visão"),
     ("LARANJA", r"vomit\w+ (com )?sangue|sangue nas fezes|fezes pretas", "sangramento digestivo"),
@@ -35,6 +35,7 @@ SINAIS = [
     ("LARANJA", r"(queim\w+|quente|fervendo).{0,40}\b(rosto|face|olho|olhos)\b|\b(rosto|face)\b.{0,40}(queim\w+|fervendo)", "queimadura no rosto"),
     ("LARANJA", r"(tomou|tomei|engoliu|engoli|bebeu|bebi)\b.{0,40}(cartela|varios comprimidos|muitos comprimidos|veneno|produto de limpeza|agua sanitaria|soda)", "possível intoxicação"),
     ("LARANJA", r"(diarreia|vomit\w+).*(molinh\w|prostrad\w|sem lagrima|nao sai lagrima|nao quer beber|olhos fundos)", "sinais de desidratação"),
+    ("LARANJA", r"(cobra|escorpiao|aranha)\b.{0,20}\b(picou|mordeu)|(picad\w|picou|mordid\w).{0,20}\b(cobra|escorpiao|aranha)", "picada de animal peçonhento"),
     ("AMARELO", r"mordid\w|mordeu|(cao|cachorro|gato|morcego|macaco)\b.{0,30}(avancou|atacou|arranhou)", "agressão por animal"),
     ("AMARELO", r"(gravid\w|gestante|meses de gestacao).*(dor|doendo|doi)|(dor|doendo).*(gravid\w|gestante)", "dor na gestação"),
     ("AMARELO", r"(urin\w+|xixi).*(febre|calafrio)|(febre|calafrio).*(urin\w+|xixi)", "sintoma urinário com febre"),
@@ -49,7 +50,7 @@ SINAIS = [
 ]
 _SINAIS = [(n, re.compile(p), m) for n, p, m in SINAIS]
 # A conjuncao interrompe a negacao: "sem febre mas falta de ar" NAO nega a falta de ar.
-_NEGACAO = re.compile(r"\b(sem|nem|nao tenho|nao tem|nao sinto|nao estou com|nega|nunca tive)(\s+(?!mas\b|porem\b|e\b|com\b|so\b|tenho\b|sinto\b)\w+){0,2}\s*$")
+_NEGACAO = re.compile(r"\b(sem|nem|nao tenho|nao tem|nao sinto|nao estou com|neg[ao]|nunca tive)(\s+(?!mas\b|porem\b|e\b|com\b|so\b|tenho\b|sinto\b)\w+){0,2}\s*$")
 
 ESPECIALIDADE_GINECOLOGIA = re.compile(r"gravid\w+|gestante|menstrua\w+|preventivo|corrimento|pre.?natal")
 
@@ -66,13 +67,18 @@ def sinais(sintomas: str, idade: int | None = None) -> list[tuple[str, str]]:
     for nivel, padrao, motivo in _SINAIS:
         for m in padrao.finditer(texto):
             # "sem febre", "nao tenho falta de ar": a queixa foi negada.
-            if nivel != "AZUL" and not m.group().startswith(("nao consig", "sem conseguir")) and _NEGACAO.search(texto[: m.start()]):
+            if nivel != "AZUL" and not m.group().startswith(("nao consig", "nao quero mais", "sem conseguir")) and _NEGACAO.search(texto[: m.start()]):
                 continue
             achados.append((nivel, motivo))
             break
-    if idade is not None and idade < 1 and re.search(r"febre", texto):
+    if idade is not None and idade < 1 and _febre(texto):
         achados.append(("LARANJA", "febre em menor de 1 ano"))
     return achados
+
+
+def _febre(texto: str) -> bool:
+    """Febre citada e não negada."""
+    return any(not _NEGACAO.search(texto[: m.start()]) for m in re.finditer(r"\bfebre\b", texto))
 
 
 def classificar(sintomas: str, idade: int | None = None) -> dict:
@@ -80,8 +86,7 @@ def classificar(sintomas: str, idade: int | None = None) -> dict:
     if achados:
         nivel, motivo = min(achados, key=lambda a: NIVEIS.index(a[0]))
         justificativa = f"Pelas regras de triagem: {motivo}."
-        febre = re.search(r"\bfebre\b", normalizar(sintomas))
-        if nivel == "VERDE" and febre and not _NEGACAO.search(normalizar(sintomas)[: febre.start()]):
+        if nivel == "VERDE" and _febre(normalizar(sintomas)):
             # Sem o modelo, nao da para separar a febre banal da que acompanha algo grave.
             nivel, justificativa = "AMARELO", f"Pelas regras de triagem: {motivo}, com febre."
     else:

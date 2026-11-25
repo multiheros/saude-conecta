@@ -34,9 +34,10 @@ function criarRotas(env = process.env) {
   r.get('/home', rota(async (req, res) => {
     const [p, l] = await Promise.all([
       paciente(req),
-      opcional(pedir(req, 'GET', `${AGE}/agendamentos?pacienteId=${eu(req)}&size=20`)),
+      opcional(pedir(req, 'GET', `${AGE}/agendamentos?pacienteId=${eu(req)}&size=100`)),
     ]);
-    const ativos = l && l.items.filter((a) => ['PENDENTE', 'AGENDADO', 'CONFIRMADO'].includes(a.status));
+    const ativos = l && l.items.filter((a) => ['PENDENTE', 'AGENDADO', 'CONFIRMADO'].includes(a.status) && new Date(a.dataHora) > new Date())
+      .sort((a, b) => new Date(a.dataHora) - new Date(b.dataHora));
     res.json({
       nome: p.nome, proximos: ativos && ativos.map(cartao), parcial: l === null || undefined,
       _links: { triagem: link('/triagem', 'POST'), horarios: link('/horarios'), agendar: link('/agendamentos', 'POST'), agendamentos: link('/agendamentos') },

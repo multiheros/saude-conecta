@@ -3,6 +3,7 @@
 # Ja preparado e offline:  docker compose up -d --no-build   (antes: scripts/preparar.sh)
 # Entrada unica: http://localhost:8080
 
+# Volta sozinho se a maquina reiniciar.
 x-node-service: &svc-defaults
   restart: unless-stopped
 
@@ -26,6 +27,7 @@ services:
   # Contador do limite de requisicoes, unico entre replicas do gateway. Se cair, o gateway libera.
   cache-gateway:
     image: redis:7-alpine
+    <<: *svc-defaults
     environment:
       REDISCLI_AUTH: ${GATEWAY_CACHE_PASSWORD:-troque-me-gateway}
     command: ["sh", "-c", "exec redis-server --save '' --appendonly no --maxmemory 32mb --maxmemory-policy allkeys-lru --requirepass \"$$REDISCLI_AUTH\""]
@@ -179,6 +181,7 @@ services:
   # ---------- Bancos: instancias separadas, volume proprio ----------
   db-pacientes:
     image: postgres:16-alpine
+    <<: *svc-defaults
     environment:
       POSTGRES_DB: pacientes
       POSTGRES_USER: ${PACIENTES_DB_USER:-pacientes}
@@ -193,6 +196,7 @@ services:
 
   db-agendamento:
     image: postgres:16-alpine
+    <<: *svc-defaults
     environment:
       POSTGRES_DB: agendamento
       POSTGRES_USER: ${AGENDAMENTO_DB_USER:-agendamento}
@@ -208,6 +212,7 @@ services:
   # Read Model do Agendamento (CQRS): projecao duravel e cache de vagas. Ambos podem ser refeitos do PostgreSQL.
   db-agendamento-leitura:
     image: mongo:7
+    <<: *svc-defaults
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${AGENDAMENTO_LEITURA_USER:-leitura}
       MONGO_INITDB_ROOT_PASSWORD: ${AGENDAMENTO_LEITURA_PASSWORD:-troque-me-leitura}
@@ -221,6 +226,7 @@ services:
 
   cache-agendamento:
     image: redis:7-alpine
+    <<: *svc-defaults
     environment:
       REDISCLI_AUTH: ${AGENDAMENTO_CACHE_PASSWORD:-troque-me-cache}
     # So cache: sem persistencia, com limite de memoria.
@@ -234,6 +240,7 @@ services:
 
   db-triagem:
     image: mongo:7
+    <<: *svc-defaults
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${TRIAGEM_DB_USER:-triagem}
       MONGO_INITDB_ROOT_PASSWORD: ${TRIAGEM_DB_PASSWORD:-troque-me-triagem}
@@ -248,6 +255,7 @@ services:
   # Base vetorial do RAG. O ChromaDB 1.x nao tem autenticacao: a protecao e a rede, que so a Triagem alcanca.
   db-triagem-vetores:
     image: chromadb/chroma:1.5.9
+    <<: *svc-defaults
     environment: { ANONYMIZED_TELEMETRY: "FALSE" }
     volumes: [triagem-vetores-data:/data]
     networks: [data-triagem]
@@ -259,6 +267,7 @@ services:
 
   db-notificacoes:
     image: redis:7-alpine
+    <<: *svc-defaults
     environment:
       # Lida tambem pelo redis-cli (healthcheck)
       REDISCLI_AUTH: ${NOTIFICACOES_DB_PASSWORD:-troque-me-notificacoes}
@@ -274,6 +283,7 @@ services:
   # ---------- Mensageria ----------
   rabbitmq:
     image: saudeconecta/rabbitmq:${IMAGENS_TAG:-1.0}
+    <<: *svc-defaults
     build: ./infra/rabbitmq
     hostname: rabbitmq # o nome do no define a pasta de dados: fixo para nao perder filas
     environment:

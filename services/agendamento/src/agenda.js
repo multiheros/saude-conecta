@@ -9,6 +9,8 @@ const ACOES = {
   CONFIRMADO: ['reagendar', 'cancelar'],
   CANCELADO: [], REALIZADO: [], FALTOU: [],
 };
+// Depois do horario, o que resta e o comparecimento: cancelar ali apagaria a falta.
+const acoes = (status, inicio) => (new Date(inicio) > new Date() ? ACOES[status] : []);
 // Comparecimento e registrado pelo gestor; nao vira link para o paciente.
 const COMPARECIMENTO_DE = ['AGENDADO', 'CONFIRMADO'];
 
@@ -71,7 +73,7 @@ async function mudarStatus(c, id, status, motivo = null) {
 }
 
 function exigir(a, acao) {
-  if (!ACOES[a.status].includes(acao)) throw new Problema(409, 'Transição de estado inválida', `Não é possível ${acao} um agendamento ${a.status}.`);
+  if (!acoes(a.status, a.inicio).includes(acao)) throw new Problema(409, 'Transição de estado inválida', `Não é possível ${acao} um agendamento ${a.status}${new Date(a.inicio) > new Date() ? '' : ' cujo horário já passou'}.`);
 }
 
 // SAGA passo 3: transacao local do orquestrador. Idempotente por sagaId.
@@ -168,4 +170,4 @@ async function criarEscala(c, ctx, e) {
   return { id, slotsGerados: slots.length };
 }
 
-module.exports = { ACOES, SELECT, detalhe, buscar, reservar, liberarReserva, confirmar, cancelar, reagendar, registrarComparecimento, criarEscala, eventoAgendamento, mudarStatus };
+module.exports = { ACOES, acoes, SELECT, detalhe, buscar, reservar, liberarReserva, confirmar, cancelar, reagendar, registrarComparecimento, criarEscala, eventoAgendamento, mudarStatus };

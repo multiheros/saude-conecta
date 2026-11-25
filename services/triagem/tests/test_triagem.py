@@ -55,6 +55,15 @@ def pedir(c, saga, sintomas="tosse e coriza ha dois dias", paciente=None, **extr
     ("uso insulina e fiquei tremendo e confuso", 54, "LARANJA"),
     ("estou chiando e cansado para respirar", 38, "LARANJA"),
     ("pressão alta e a vista embaçou", 68, "VERMELHO"),
+    ("coriza leve e sem febre", 0, "VERDE"),
+    ("ontem sem febre, hoje com febre", 0, "LARANJA"),
+    ("tô com falta d'ar desde cedo", 40, "LARANJA"),
+    ("falta d ar intensa", 40, "VERMELHO"),
+    ("não quero mais viver", 30, "VERMELHO"),
+    ("pensando em tirar a própria vida", 30, "VERMELHO"),
+    ("um escorpião picou minha mão", 30, "LARANJA"),
+    ("picada de cobra na perna", 30, "LARANJA"),
+    ("nego dor no peito, só coceira", 30, "VERDE"),
 ])
 def test_regras(sintomas, idade, nivel):
     assert regras.classificar(sintomas, idade)["classificacao"] == nivel
