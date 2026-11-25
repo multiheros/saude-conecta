@@ -6,11 +6,12 @@ import socket
 import time
 import uuid
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 from pymongo.errors import PyMongoError
 
 from .consumidor import Consumidor
@@ -128,9 +129,12 @@ def ready():
 
 
 # --- Triagens
+Sintomas = Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=2000)]
+
+
 class TriagemIn(BaseModel):
     pacienteId: uuid.UUID
-    sintomas: str = Field(min_length=10, max_length=2000)
+    sintomas: Sintomas
     idade: int | None = Field(default=None, ge=0, le=130)
 
 
@@ -167,7 +171,7 @@ def descartar(sagaId: str = Query()):
 
 # Antes da SAGA: classifica e recomenda horarios reais da unidade. Nao grava triagem.
 class RecomendacaoIn(BaseModel):
-    sintomas: str = Field(min_length=10, max_length=2000)
+    sintomas: Sintomas
     idade: int | None = Field(default=None, ge=0, le=130)
     ubsId: uuid.UUID
 

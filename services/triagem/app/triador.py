@@ -87,7 +87,7 @@ _PRESCRICAO = re.compile(r"(?i)\b\d+ *(mg|ml|mcg|gotas?|comprimidos?)\b|\b(tome|
 def sem_dados_pessoais(texto: str) -> str:
     for padrao, troca in _PESSOAIS:
         texto = padrao.sub(troca, texto)
-    return re.sub(r"</?queixa>", "", texto)
+    return re.sub(r"(?i)</?queixa>", "", texto)
 
 
 def faixa_etaria(idade: int | None) -> str:
