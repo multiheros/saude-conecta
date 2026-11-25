@@ -285,7 +285,7 @@ As cenas e o plano B estão em [`docs/demonstracao.md`](docs/demonstracao.md).
 |-------|--------|------|
 | **Parte 1** — Concepção e Pitch | 🟢 Concluída | 17/09/2026 |
 | **Parte 2** — Arquitetura | 🟢 Concluída | 22–27/10/2026 |
-| **Parte 3** — Containerização e K8s ([vídeo](https://youtu.be/KnB0XyP8xoM)) | 🟢 Concluída | 17/11/2026 |
+| **Parte 3** — Containerização e K8s ([vídeo](https://youtu.be/KnB0XyP8xoM) · [apresentação em PDF](docs/apresentacao-parte3.pdf)) | 🟢 Concluída | 17/11/2026 |
 | **Parte 4** — Sistema em Funcionamento | 🟡 Pronta para apresentação | 10–15/12/2026 |
 
 ---
@@ -306,6 +306,7 @@ As cenas e o plano B estão em [`docs/demonstracao.md`](docs/demonstracao.md).
 |-----------|-----------|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Visão de arquitetura** — ponto de partida; requisitos das Partes 2 e 4 e onde estão |
 | [`docs/containerizacao.md`](docs/containerizacao.md) | Imagens, redes, volumes, Kubernetes e provas *(Partes 3 e 4)* |
+| [`docs/apresentacao-parte3.pdf`](docs/apresentacao-parte3.pdf) | Apresentação da Parte 3: roteiro do vídeo com prints dos comandos, no código da etapa (commit `a954388`) *(Parte 3)* |
 | [`docs/parte1_concepcao.md`](docs/parte1_concepcao.md) | Concepção, problema, impacto social e referências (Parte 1) |
 | [`docs/arquitetura/decomposicao-microsservicos.md`](docs/arquitetura/decomposicao-microsservicos.md) | Bounded Contexts (DDD), componentes e comunicação REST/RabbitMQ *(Parte 2)* |
 | [`docs/arquitetura/saga-agendamento.md`](docs/arquitetura/saga-agendamento.md) | SAGA orquestrada e fluxo compensatório *(Parte 2)* |
