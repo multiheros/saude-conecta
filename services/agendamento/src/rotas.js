@@ -1,11 +1,11 @@
 const express = require('express');
 const { transacao } = require('../../../libs/comum/db');
 const { Problema } = require('../../../libs/comum/erros');
-const { UUID, inteiro, invalido, exigirPerfil, exigirDono, rota } = require('../../../libs/comum/http');
+const { UUID, padrao, inteiro, invalido, exigirPerfil, exigirDono, rota } = require('../../../libs/comum/http');
 const agenda = require('./agenda');
 
-const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
-const DATA = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+const HORA = padrao(/^([01]\d|2[0-3]):[0-5]\d$/);
+const DATA = padrao(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/);
 
 // Recebe a visao de um agendamento: a linha do Write Model (resposta de comando) ou o documento
 // do Read Model (resposta de consulta). `projetadoEm` e o nome do paciente so existem na segunda.
@@ -13,7 +13,7 @@ function representar(a) {
   const base = `/api/v1/agendamentos/${a.agendamentoId}`;
   const caminho = { confirmar: 'confirmacao', reagendar: 'reagendamento', cancelar: 'cancelamento' };
   const _links = { self: { href: base, method: 'GET' } };
-  for (const acao of agenda.ACOES[a.status]) _links[acao] = { href: `${base}/${caminho[acao]}`, method: 'POST' };
+  for (const acao of agenda.acoes(a.status, a.slot.inicio)) _links[acao] = { href: `${base}/${caminho[acao]}`, method: 'POST' };
   return {
     id: a.agendamentoId, status: a.status, pacienteId: a.pacienteId, pacienteNome: a.pacienteNome, slotId: a.slot.id, dataHora: a.slot.inicio,
     especialidade: a.profissional.especialidade, profissional: a.profissional, ubs: a.ubs, classificacaoUrgencia: a.urgencia,

@@ -110,6 +110,32 @@ test('horario passado nao pode ser reservado', async () => {
   await pool.query('DELETE FROM slots WHERE id=$1', [id]);
 });
 
+test('depois do horario, o paciente nao confirma, cancela nem reagenda; o gestor ainda registra a falta', async () => {
+  const [s, outro] = await slots(CLINICA, 2);
+  const d = await agendado(s), url = `/agendamentos/${d.agendamentoId}`;
+  const { rows: [antes] } = await pool.query('SELECT inicio, fim FROM slots WHERE id=$1', [s]);
+  await pool.query("UPDATE slots SET inicio=now()-interval '2 hours', fim=now()-interval '90 minutes' WHERE id=$1", [s]);
+  try {
+    for (const acao of ['confirmacao', 'cancelamento', 'reagendamento']) {
+      const r = await chamar('POST', `${url}/${acao}`, { corpo: { novoSlotId: outro } });
+      assert.deepEqual([r.status, /já passou/.test(r.corpo.detail)], [409, true], acao);
+    }
+    const r = await chamar('POST', `${url}/comparecimento`, { corpo: { compareceu: false } });
+    assert.deepEqual([r.status, r.corpo.status, Object.keys(r.corpo._links)], [200, 'FALTOU', ['self']]);
+  } finally { await pool.query('UPDATE slots SET inicio=$2, fim=$3 WHERE id=$1', [s, antes.inicio, antes.fim]); }
+});
+
+test('entrada fora do formato e recusada, nunca vira erro interno', async () => {
+  const [s] = await slots(CLINICA, 1), usuario = randomUUID();
+  const bom = { pacienteId: usuario, slotId: s, sintomas: 'dor de garganta leve' };
+  const pedir = (corpo, headers) => fetch(`${base}/agendamentos`, { method: 'POST', headers: { 'content-type': 'application/json', 'X-User-Role': 'paciente', 'X-User-Id': usuario, ...headers }, body: JSON.stringify(corpo) }).then((r) => r.status);
+  assert.equal(await pedir({ ...bom, slotId: [s] }), 422);
+  assert.equal(await pedir({ ...bom, sintomas: 'dor de \u0000 garganta' }), 422);
+  assert.equal(await pedir({ ...bom, sintomas: 'x'.repeat(200000) }), 413);
+  assert.equal(await pedir(bom, { 'X-Correlation-Id': 'c'.repeat(100) }), 202);
+  assert.equal((await pool.query('SELECT correlation_id FROM saga_instances')).rows[0].correlation_id, 'c'.repeat(64));
+});
+
 test('HATEOAS: links seguem o estado e acao invalida da 409', async () => {
   const [s] = await slots(CLINICA, 1);
   const d = await agendado(s);

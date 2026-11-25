@@ -81,7 +81,7 @@ test('cadastro: valida, cria, recusa CPF repetido e nunca expoe a senha', async 
   assert.ok(!JSON.stringify(r.corpo).match(/senha|scrypt/));
   assert.equal((await chamar('POST', '/pacientes', { corpo: novo({ cpf: d.cpf }) })).status, 409);
   assert.equal((await chamar('POST', '/auth/login', { corpo: { cpf: d.cpf, senha: 'segredo123' } })).status, 200);
-  for (const ruim of [{ cpf: '12345678900' }, { cpf: '11111111111' }, { email: 'x' }, { senha: 'curta' }, { nome: 'a' }, { dataNascimento: '2030-01-01' }, { dataNascimento: '1990-02-30' }, { ubsReferenciaId: 'x' }, { telefone: 'abc' }]) {
+  for (const ruim of [{ cpf: '12345678900' }, { cpf: '11111111111' }, { email: 'x' }, { senha: 'curta' }, { nome: 'a' }, { dataNascimento: '2030-01-01' }, { dataNascimento: '1990-02-30' }, { ubsReferenciaId: 'x' }, { telefone: 'abc' }, { telefone: ['+5535900000001'] }, { dataNascimento: ['1990-01-01'] }, { nome: 'Ma\u0000ria' }]) {
     assert.equal((await chamar('POST', '/pacientes', { corpo: novo(ruim) })).status, 422, JSON.stringify(ruim));
   }
   await pool.query('DELETE FROM pacientes WHERE id=$1', [r.corpo.id]);

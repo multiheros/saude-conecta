@@ -3,7 +3,7 @@
 // Chaves:
 //   n:<id>            hash da notificacao
 //   saga:<sagaId>     conjunto de ids        encerrada:<sagaId>  SAGA compensada (TTL)
-//   ag:<agendamento>  conjunto de ids        agv:<agendamento>   hash { versao, pacienteId, dataConsulta }
+//   ag:<agendamento>  conjunto de ids        agv:<agendamento>   hash { versao }
 //   pac:<paciente>    zset de ids por data   pref:<paciente>     JSON
 //   agenda            zset de ids por horario de envio (so notificacoes liberadas)
 //   vaga:<slot>       hash { versao }        cap:<ubs>|<esp>|<dia> e ocu:<...>: conjuntos de slots
