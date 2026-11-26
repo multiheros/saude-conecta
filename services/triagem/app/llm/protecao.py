@@ -73,6 +73,8 @@ def motivo_da_falha(e: BaseException) -> tuple[str, bool]:
         if isinstance(visto, ConnectionError) or "TransportError" in nomes:
             return "conexao", True
         codigo = getattr(visto, "code", None)
+        if not isinstance(codigo, int):
+            codigo = getattr(visto, "status_code", None)  # SDK da OpenAI, usado pelo DeepSeek
         if isinstance(codigo, int):
             # 429 e cota: repetir em 0,2 s so gasta mais cota. 4xx e erro nosso ou da chave.
             return f"http {codigo}", codigo >= 500
