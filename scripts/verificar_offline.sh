@@ -4,7 +4,7 @@
 # Uso: scripts/verificar_offline.sh     (~2 min; porta 18085)
 set -uo pipefail
 cd "$(dirname "$0")/.."
-export GEMINI_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
+export GEMINI_API_KEY= DEEPSEEK_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
 export COMPOSE_PROJECT_NAME=saudeconecta-offline GATEWAY_PORTA=${GATEWAY_PORTA:-18085} LIMITE_POR_MINUTO=2000 COMPOSE_FILE=docker-compose.yml:scripts/offline.compose.yml
 G=http://127.0.0.1:$GATEWAY_PORTA
 trap 'docker compose down -v >/dev/null 2>&1' EXIT

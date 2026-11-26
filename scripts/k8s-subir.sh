@@ -2,8 +2,8 @@
 # Sobe tudo no Kubernetes local (kind) com um comando: cluster, Ingress, imagens, chaves e manifestos.
 #   scripts/k8s-subir.sh                      cluster "saudeconecta" em http://localhost:8081
 #   CLUSTER=outro PORTA=8091 scripts/k8s-subir.sh
-# Precisa de kind, kubectl e internet (o cluster baixa as imagens dos bancos). Se houver GEMINI_API_KEY no .env,
-# cria o Secret com ela; a chave nao passa por nenhum arquivo versionado.
+# Precisa de kind, kubectl e internet (o cluster baixa as imagens dos bancos). Se houver DEEPSEEK_API_KEY ou GEMINI_API_KEY
+# no .env, cria o Secret com elas; as chaves nao passam por nenhum arquivo versionado.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 CLUSTER=${CLUSTER:-saudeconecta}; PORTA=${PORTA:-8081}; NS=saudeconecta
@@ -26,11 +26,11 @@ done
 echo "4. Chaves e manifestos"
 $K apply -f k8s/00-namespace.yaml >/dev/null
 scripts/k8s-chaves.sh
-CHAVE=$(sed -n 's/^GEMINI_API_KEY=//p' .env 2>/dev/null | tr -d '\r' || true)
-if [ -n "$CHAVE" ]; then
-  printf %s "$CHAVE" | $K -n $NS create secret generic triagem-llm --from-file=GEMINI_API_KEY=/dev/stdin --dry-run=client -o yaml | $K apply -f - >/dev/null && echo "  Secret do LLM criado a partir do .env"
-else echo "  sem GEMINI_API_KEY: a triagem trabalha por regras"; fi
-unset CHAVE
+CHAVES=$(grep -E '^(DEEPSEEK|GEMINI)_API_KEY=.' .env 2>/dev/null | tr -d '\r' || true)
+if [ -n "$CHAVES" ]; then
+  $K -n $NS create secret generic triagem-llm --from-env-file=<(printf '%s\n' "$CHAVES") --dry-run=client -o yaml | $K apply -f - >/dev/null && echo "  Secret do LLM criado a partir do .env"
+else echo "  sem chave do LLM: a triagem trabalha por regras"; fi
+unset CHAVES
 tentar $K apply -f k8s/ >/dev/null # o Ingress pode precisar de mais de uma vez: o webhook dele demora a responder
 echo "5. Esperando (o Kubernetes baixa os bancos e a Triagem carrega a base do RAG)"
 for d in db-pacientes db-agendamento db-agendamento-leitura db-triagem db-triagem-vetores db-notificacoes rabbitmq; do $K -n $NS rollout status statefulset/$d --timeout=420s | tail -1; done

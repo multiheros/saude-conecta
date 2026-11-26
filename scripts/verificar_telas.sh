@@ -8,7 +8,7 @@
 # Uso: scripts/verificar_telas.sh [pasta]    (~4 min; com pasta, guarda as imagens nela)
 set -uo pipefail
 cd "$(dirname "$0")/.."
-export GEMINI_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
+export GEMINI_API_KEY= DEEPSEEK_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
 BUILD=--build; [ -n "${SEM_BUILD:-}" ] && BUILD=--no-build # SEM_BUILD=1: usa as imagens ja prontas
 export COMPOSE_PROJECT_NAME=saudeconecta-telas GATEWAY_PORTA=${GATEWAY_PORTA:-18082} LIMITE_POR_MINUTO=5000 CACHE_SEGUNDOS=1
 G=http://127.0.0.1:$GATEWAY_PORTA

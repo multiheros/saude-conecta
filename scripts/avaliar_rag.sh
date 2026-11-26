@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Avaliacao do RAG e medida de latencia com o modelo real. Usa a chave do .env e GASTA COTA (~110 + ~70 chamadas).
+# Avaliacao do RAG e medida de latencia com o modelo real. Usa a chave do .env (DeepSeek, ou Gemini) e GASTA COTA (~110 + ~70 chamadas).
+# Os resultados de cada provedor ficam em arquivos proprios (resultados.jsonl do Gemini, resultados-deepseek.jsonl ...).
 #   scripts/avaliar_rag.sh             coleta (retoma de onde parou) e mostra o relatorio
 #   scripts/avaliar_rag.sh relatorio   so o relatorio, sem chamar o modelo
 #   scripts/avaliar_rag.sh confirmar   12 perguntas novas, com o resultado final de producao
