@@ -271,7 +271,7 @@ scripts/e2e.sh          # todas, com resumo: testes, isolamento, Outbox, SAGA, C
 scripts/demo/5-falha.sh # uma cena da demonstração: SAGA com falha e compensação
 ```
 
-As cenas e o plano B estão em [`docs/demonstracao.md`](docs/demonstracao.md).
+As cenas e o plano B estão em [`docs/demonstracao.md`](docs/demonstracao.md). Vídeo da demonstração: [YouTube](https://www.youtube.com/watch?v=G24p4xp5zK8) ou [arquivo](docs/video-parte4.mp4).
 
 ### Limpeza
 
@@ -286,7 +286,7 @@ As cenas e o plano B estão em [`docs/demonstracao.md`](docs/demonstracao.md).
 | **Parte 1** — Concepção e Pitch | 🟢 Concluída | 17/09/2026 |
 | **Parte 2** — Arquitetura | 🟢 Concluída | 22–27/10/2026 |
 | **Parte 3** — Containerização e K8s ([vídeo](https://youtu.be/KnB0XyP8xoM) · [apresentação em PDF](docs/apresentacao-parte3.pdf)) | 🟢 Concluída | 17/11/2026 |
-| **Parte 4** — Sistema em Funcionamento | 🟡 Pronta para apresentação | 10–15/12/2026 |
+| **Parte 4** — Sistema em Funcionamento ([vídeo](https://www.youtube.com/watch?v=G24p4xp5zK8) · [arquivo do vídeo](docs/video-parte4.mp4)) | 🟡 Pronta para apresentação | 10–15/12/2026 |
 
 ---
 
@@ -306,6 +306,7 @@ As cenas e o plano B estão em [`docs/demonstracao.md`](docs/demonstracao.md).
 |-----------|-----------|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Visão de arquitetura** — ponto de partida; requisitos das Partes 2 e 4 e onde estão |
 | [`docs/containerizacao.md`](docs/containerizacao.md) | Imagens, redes, volumes, Kubernetes e provas *(Partes 3 e 4)* |
+| [`docs/video-parte4.mp4`](docs/video-parte4.mp4) | Vídeo da Parte 4 (6 min 47 s): subida do zero, SAGA com falha e compensação, CQRS, RAG, LLM fora do ar, latência e custo. Também no [YouTube](https://www.youtube.com/watch?v=G24p4xp5zK8) *(Parte 4)* |
 | [`docs/apresentacao-parte3.pdf`](docs/apresentacao-parte3.pdf) | Apresentação da Parte 3: roteiro do vídeo com prints dos comandos, no código da etapa (commit `a954388`) *(Parte 3)* |
 | [`docs/parte1_concepcao.md`](docs/parte1_concepcao.md) | Concepção, problema, impacto social e referências (Parte 1) |
 | [`docs/arquitetura/decomposicao-microsservicos.md`](docs/arquitetura/decomposicao-microsservicos.md) | Bounded Contexts (DDD), componentes e comunicação REST/RabbitMQ *(Parte 2)* |
