@@ -1,0 +1,429 @@
+[
+ {
+  "id": 1,
+  "esperado": [
+   "VERMELHO"
+  ],
+  "producao": "VERMELHO",
+  "origem": "LLM",
+  "regras": "VERMELHO",
+  "justificativa": "Pessoa caída que não responde é situação de risco imediato de vida: ligue agora para o 192 (SAMU) e, se souber, inicie a massagem cardíaca. Não espere agendamento.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Desmaio e parada cardíaca",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.3 Crise epiléptica e epilepsia > Dicas úteis:",
+    "pagina": 43
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.20 Tonturas e vertigens > Encaminhamento ao pronto-socorro",
+    "pagina": 189
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Tontura",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.20 Tonturas e vertigens > Sensação de síncope iminente",
+    "pagina": 189
+   }
+  ]
+ },
+ {
+  "id": 2,
+  "esperado": [
+   "LARANJA",
+   "VERMELHO"
+  ],
+  "producao": "LARANJA",
+  "origem": "LLM",
+  "regras": "LARANJA",
+  "justificativa": "Seus sintomas (suor frio, tremor e confusão) sugerem açúcar baixo no sangue, e a confusão indica hipoglicemia moderada a grave, que precisa de atendimento rápido. Vá à unidade ou à UPA agora; se houver piora da sonolência ou desmaio, ligue 192.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Diabetes descompensado",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.4 Descompensação do diabetes mellitus: hipoglicemia e hiperglicemia > Causas, sinais/sintomas e manejo da hipoglicemia:",
+    "pagina": 51
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.4 Descompensação do diabetes mellitus: hipoglicemia e hiperglicemia > Hiperglicemia",
+    "pagina": 52
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.4 Descompensação do diabetes mellitus: hipoglicemia e hiperglicemia > Hiperglicemia",
+    "pagina": 53
+   }
+  ]
+ },
+ {
+  "id": 3,
+  "esperado": [
+   "VERMELHO"
+  ],
+  "producao": "VERMELHO",
+  "origem": "LLM",
+  "regras": "VERMELHO",
+  "justificativa": "Inchaço na língua e rouquidão após comer camarão são sinais de alergia grave com risco de vida. Ligue agora para o 192 (SAMU) ou vá imediatamente à emergência.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Alergia grave (anafilaxia)",
+    "pagina": null
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dor de ouvido e de garganta",
+    "pagina": null
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Falta de ar, chiado e tosse",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.11 Dor de garganta",
+    "pagina": 111
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Diarreia e vômito",
+    "pagina": null
+   }
+  ]
+ },
+ {
+  "id": 4,
+  "esperado": [
+   "LARANJA"
+  ],
+  "producao": "LARANJA",
+  "origem": "LLM",
+  "regras": "LARANJA",
+  "justificativa": "Você relata chiado e cansaço para respirar desde ontem, e o protocolo classifica chiado que piora e cansaço para respirar como LARANJA. Além disso, a bombinha ajudou pouco, o que pede avaliação em até 4 horas.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Falta de ar, chiado e tosse",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.6 Dispneia > Tratamento da crise de asma na unidade de saúde ou em domicílio",
+    "pagina": 68
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.6 Dispneia > Tratamento da exacerbação",
+    "pagina": 67
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.6 Dispneia > Diagnóstico",
+    "pagina": 66
+   }
+  ]
+ },
+ {
+  "id": 5,
+  "esperado": [
+   "VERDE"
+  ],
+  "producao": "VERDE",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Feridas com crosta amarelada ao redor do nariz são compatíveis com impetigo, que o protocolo classifica como VERDE quando não há outros sinais. Não foram relatadas manchas roxas com febre nem vermelhidão quente que se espalha.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Problemas de pele",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.18 Rinossinusites/síndromes gripais > Rinossinusites agudas",
+    "pagina": 168
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.18 Rinossinusites/síndromes gripais > Complicações",
+    "pagina": 171
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.2 Cefaleia > Diagnóstico Anamnese",
+    "pagina": 31
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.16 Mordedura de animais > Sobre o ferimento",
+    "pagina": 155
+   }
+  ]
+ },
+ {
+  "id": 6,
+  "esperado": [
+   "LARANJA"
+  ],
+  "producao": "LARANJA",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Dor que começou perto do umbigo e desceu para o lado direito, junto com febre, é um sinal de gravidade que precisa de avaliação em até 4 horas. Se não houver horário nesse prazo, procure a unidade ou a UPA agora.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dor de barriga (dor abdominal)",
+    "pagina": null
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dor de ouvido e de garganta",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.11 Dor de garganta > Faringite estreptocócica",
+    "pagina": 112
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.13 Dor torácica > Estratificação da dor",
+    "pagina": 123
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.13 Dor torácica > Estratificação da dor",
+    "pagina": 124
+   }
+  ]
+ },
+ {
+  "id": 7,
+  "esperado": [
+   "AMARELO",
+   "LARANJA"
+  ],
+  "producao": "AMARELO",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Pus no ouvido com febre alta (39°C) se encaixa em \"pus, placas ou febre alta: AMARELO\". Não há sinais de alerta como inchaço atrás da orelha, confusão ou dificuldade para respirar/engolir.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dor de ouvido e de garganta",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.10 Dor de ouvido > Diagnóstico e tratamento das otites",
+    "pagina": 104
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.10 Dor de ouvido > Encaminhamento",
+    "pagina": 109
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.10 Dor de ouvido > Abscesso de conduto (otite externa furunculosa)",
+    "pagina": 106
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.10 Dor de ouvido > Otite média aguda (OMA)",
+    "pagina": 107
+   }
+  ]
+ },
+ {
+  "id": 8,
+  "esperado": [
+   "VERDE"
+  ],
+  "producao": "VERDE",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Pela sua queixa, é uma dor lombar aguda após esforço ao carregar peso, sem formigamento, o que sugere quadro sem sinais de alerta. Os trechos indicam que dor lombar aguda sem comprometimento grave pode ser atendida na Atenção Básica, com orientações e alternativas de alívio.",
+  "fontes": [
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.12 Dor lombar > Orientações",
+    "pagina": 120
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.21 Urgências odontológicas > Deslocamento de disco sem redução",
+    "pagina": 200
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.9 Dor abdominal > Constipação intestinal",
+    "pagina": 101
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.21 Urgências odontológicas > Dores Periapicais Pericementite apical aguda simples",
+    "pagina": 193
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.9 Dor abdominal > Diagnóstico Causas de dor abdominal",
+    "pagina": 93
+   }
+  ]
+ },
+ {
+  "id": 9,
+  "esperado": [
+   "VERMELHO"
+  ],
+  "producao": "VERMELHO",
+  "origem": "LLM",
+  "regras": "VERMELHO",
+  "justificativa": "Pressão muito alta (20 por 12) com vista embaçada e dor no peito é sinal de risco imediato, conforme o protocolo. Não agende consulta: procure atendimento de emergência agora, ligando 192 (SAMU).",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Pressão alta",
+    "pagina": null
+   },
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dor no peito",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.14 Hipertensão arterial sistêmica – alterações agudas > Definições",
+    "pagina": 129
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.14 Hipertensão arterial sistêmica – alterações agudas > Dissecção aguda de aorta",
+    "pagina": 131
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.14 Hipertensão arterial sistêmica – alterações agudas > Anamnese e exame físico",
+    "pagina": 131
+   }
+  ]
+ },
+ {
+  "id": 10,
+  "esperado": [
+   "VERDE"
+  ],
+  "producao": "VERDE",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Olho vermelho com remela, sem dor nem perda de visão, é classificado como VERDE no protocolo. O prazo é de 72 horas; se aparecer dor forte, perda de visão ou piora, procure atendimento antes.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Dente e olho",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.22 Urgências oftalmológicas: “olho vermelho” > Diagnóstico diferencial",
+    "pagina": 212
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.22 Urgências oftalmológicas: “olho vermelho” > Tratamentos e encaminhamentos de outras causas de olho vermelho",
+    "pagina": 215
+   }
+  ]
+ },
+ {
+  "id": 11,
+  "esperado": [
+   "AMARELO",
+   "LARANJA"
+  ],
+  "producao": "AMARELO",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Você relatou agressão do companheiro e medo de ficar em casa; casos de violência doméstica são atendidos com prioridade em até 24 horas. Se houver risco imediato agora, ligue 192 ou 180 (Central da Mulher) e procure a unidade ou UPA.",
+  "fontes": [
+   {
+    "documento": "Protocolo interno SaúdeConecta",
+    "secao": "Sofrimento mental e violência",
+    "pagina": null
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.25 Violência e maus-tratos > Ações das equipes de Atenção Básica nos casos de violência doméstica e maus-tratos",
+    "pagina": 239
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.25 Violência e maus-tratos > Frequência irregular à escola Sinais de alerta para suspeição de violência contra a mulher",
+    "pagina": 243
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.25 Violência e maus-tratos > Ações das equipes de Atenção Básica nos casos de violência doméstica e maus-tratos",
+    "pagina": 240
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.25 Violência e maus-tratos > Ações das equipes de Atenção Básica nos casos de violência sexual",
+    "pagina": 241
+   }
+  ]
+ },
+ {
+  "id": 12,
+  "esperado": [
+   "AZUL"
+  ],
+  "producao": "AMARELO",
+  "origem": "LLM",
+  "regras": "AMARELO",
+  "justificativa": "Você relata que não faz o preventivo há três anos e não sente nada, o que é uma situação preventiva, sem sinal de alerta. Os trechos disponíveis tratam de dor abdominal e urgências odontológicas e não abordam essa queixa, por isso a confiança é baixa.",
+  "fontes": [
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.9 Dor abdominal > Anamnese e exame físico",
+    "pagina": 95
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.9 Dor abdominal > Anamnese e exame físico",
+    "pagina": 96
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.21 Urgências odontológicas > Dores Periapicais Pericementite apical aguda simples",
+    "pagina": 193
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.9 Dor abdominal > Doença inflamatória pélvica (DIP)",
+    "pagina": 99
+   },
+   {
+    "documento": "Caderno de Atenção Básica nº 28, vol. II",
+    "secao": "2.21 Urgências odontológicas > Dores dentinopulpares Cárie",
+    "pagina": 191
+   }
+  ]
+ }
+]

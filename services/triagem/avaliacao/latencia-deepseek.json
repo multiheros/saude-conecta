@@ -1,0 +1,87 @@
+{
+ "modelo": "deepseek-flash",
+ "precoEntrada": 0.3,
+ "precoSaida": 1.2,
+ "triagem": {
+  "etapas": {
+   "embedding": {
+    "n": 30,
+    "p50": 7.8,
+    "p95": 11,
+    "max": 11
+   },
+   "busca": {
+    "n": 30,
+    "p50": 3.8,
+    "p95": 4.2,
+    "max": 4.3
+   },
+   "modelo": {
+    "n": 30,
+    "p50": 1618,
+    "p95": 1789,
+    "max": 1802
+   }
+  },
+  "total": {
+   "n": 30,
+   "p50": 1633,
+   "p95": 1805,
+   "max": 1818
+  },
+  "porModelo": {
+   "n": 30,
+   "p50": 1633,
+   "p95": 1805,
+   "max": 1818
+  },
+  "llm": 30,
+  "indicadores": {
+   "habilitado": true,
+   "modelo": "deepseek-flash",
+   "provedor": "deepseek",
+   "circuito": "FECHADO",
+   "falhasPorMotivo": {},
+   "latenciaMs": {
+    "p50": 1618,
+    "p95": 1789
+   },
+   "chamadas": 30,
+   "repeticoes": 0,
+   "recusadasPeloCircuito": 0,
+   "acertosCache": 0,
+   "fallbacks": 0,
+   "tokensEntrada": 60197,
+   "tokensSaida": 5261
+  }
+ },
+ "cache": {
+  "n": 30,
+  "p50": 0.4,
+  "p95": 0.5,
+  "max": 0.6
+ },
+ "circuitoAberto": {
+  "n": 30,
+  "p50": 15,
+  "p95": 17,
+  "max": 18
+ },
+ "recomendacao": {
+  "total": {
+   "n": 8,
+   "p50": 4561,
+   "p95": 4788,
+   "max": 4788
+  },
+  "pelo modelo": 8,
+  "tokensEntrada": 27630,
+  "tokensSaida": 3341,
+  "chamadas": 24,
+  "chamadasOk": 24
+ },
+ "tokensPorTriagem": {
+  "entrada": 2007,
+  "saida": 175
+ }
+}

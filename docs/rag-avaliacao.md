@@ -1,6 +1,6 @@
 # Avaliação do RAG
 
-Modelo `gemini-3.5-flash-lite`, coleta em 24/11/2026. Perguntas, respostas e scripts em [`services/triagem/avaliacao`](../services/triagem/avaliacao). Para refazer: `scripts/avaliar_rag.sh` (gasta cota do provedor).
+Duas rodadas com o mesmo método, perguntas e gabarito: `deepseek-flash` (provedor atual, 25/11/2026) e `gemini-3.5-flash-lite` (primeira rodada, 24/11/2026). Perguntas, respostas e scripts em [`services/triagem/avaliacao`](../services/triagem/avaliacao); os arquivos do DeepSeek terminam em `-deepseek`. Para refazer: `scripts/avaliar_rag.sh` (gasta cota do provedor configurado).
 
 ## Método
 
@@ -18,7 +18,28 @@ Modelo `gemini-3.5-flash-lite`, coleta em 24/11/2026. Perguntas, respostas e scr
 
 > **Limitação do gabarito:** foi escrito pelo grupo, com base no Caderno e no protocolo interno, **sem validação de profissional de saúde**. O protocolo também é do grupo; por isso a condição "só Caderno" existe, para separar o ganho da recuperação do ganho de o gabarito e o protocolo terem os mesmos autores.
 
-## Resultado
+## Resultado com o DeepSeek (provedor atual)
+
+Mesmas 12 perguntas, 3 condições e 3 execuções (108 respostas), já com as mudanças que a primeira rodada motivou (corte 0,54).
+
+| Medida (36 respostas por condição) | Sem recuperação | Só Caderno | Completo |
+|---|---|---|---|
+| Nível esperado | 33 | 33 | **36** |
+| **Menos urgente que o esperado** (erro perigoso) | 0 | 0 | **0** |
+| Mais urgente que o esperado | 3 | 3 | 0 |
+| Perguntas com o mesmo nível nas 3 execuções | 12 de 12 | 12 de 12 | 12 de 12 |
+| Respostas que citam trecho de apoio | 0 | 36 | **36** |
+| Confiança média declarada | 0,52 | 0,75 | 0,87 |
+| Tempo do modelo, mediana | 1.629 ms | 1.725 ms | 1.770 ms |
+
+- **A recuperação ainda decide o nível nas perguntas difíceis.** Sem trechos, o modelo exagera em 3 (a 1 vira VERMELHO; a 2 e a 11, LARANJA); só com o Caderno, o mesmo. Com o protocolo interno, as 3 acertam: é ele que traz a escala de cores.
+- **Nenhum erro perigoso** em 108 respostas, e a pergunta 5 (agressão por cão), que o Gemini errou sem trecho, saiu certa nas três condições.
+- **Toda resposta com trechos cita algum**, e o mesmo nível se repete nas 3 execuções de todas as perguntas.
+- **Confirmação** com as 12 perguntas inéditas, no resultado final de produção: **11 de 12**, nenhuma menos urgente. A 12 (preventivo atrasado, sem sintoma) deveria ser AZUL e saiu AMARELO, mais cautelosa. As regras sozinhas fazem 7 de 12, com 1 menos urgente.
+
+O ganho sobre o Gemini (36 contra 30 no completo, 0 contra 6 erros perigosos) mistura duas coisas: o modelo e as mudanças feitas depois da primeira rodada. As duas rodadas usam o mesmo gabarito, então os números são comparáveis, mas não separam essas causas.
+
+## Resultado com o Gemini (primeira rodada, 24/11)
 
 | Medida (36 respostas por condição) | Sem recuperação | Só Caderno | Completo |
 |---|---|---|---|
@@ -74,7 +95,7 @@ Modelo `gemini-3.5-flash-lite`, coleta em 24/11/2026. Perguntas, respostas e scr
 
 Aplicando a regra de dúvida às mesmas respostas, o completo iria a 33 de 36, e os 3 erros restantes são os da pergunta 8. Como essa conta usa as perguntas que motivaram a regra, **não vale como medida**; daí a confirmação.
 
-### Confirmação com 12 perguntas inéditas
+### Confirmação com 12 perguntas inéditas (Gemini)
 
 Escritas depois das mudanças e rodadas uma vez, com o resultado final de produção (modelo, RAG e regras). [Perguntas](../services/triagem/avaliacao/confirmacao.json) e [respostas](../services/triagem/avaliacao/confirmacao-resultado.json).
 

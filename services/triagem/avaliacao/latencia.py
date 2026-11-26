@@ -1,7 +1,7 @@
 """Latencia por etapa e custo, com a configuracao de producao (prazos, nova tentativa, circuito) e o modelo real.
 
 30 queixas sem cache, as mesmas com cache, o fallback com circuito aberto e 8 recomendacoes completas.
-Grava latencia.json e mostra as tabelas. Uso: scripts/avaliar_rag.sh latencia
+Grava latencia.json (latencia-deepseek.json com o DeepSeek) e mostra as tabelas. Uso: scripts/avaliar_rag.sh latencia
 """
 
 import json
@@ -20,7 +20,10 @@ from app.repositorio import Repositorio
 
 AQUI = Path(os.getenv("AVALIACAO_DIR", Path(__file__).parent))
 RITMO = 5.0
-PRECO_ENTRADA, PRECO_SAIDA = 0.30, 2.50  # US$ por 1 milhao de tokens, gemini-3.5-flash-lite (camada paga), lido em 24/11/2026
+# US$ por 1 milhao de tokens (entrada, saida). Gemini: camada paga, lido em 24/11/2026. DeepSeek: horario de pico, sem cache, lido em 25/11/2026.
+PRECO_ENTRADA, PRECO_SAIDA = {"gemini": (0.30, 2.50), "deepseek": (0.30, 1.20)}[fabrica.provedor() or "gemini"]
+ARQUIVO = f"latencia{fabrica.sufixo()}.json"
+GRATUITO = fabrica.provedor() == "gemini"  # 15 chamadas por minuto: espaca as medidas
 SINTOMAS = ["dor no joelho direito", "tosse seca", "azia", "dor de ouvido", "coceira no braço", "dor nas costas", "nariz entupido", "dor de dente", "olho vermelho", "cansaço"]
 TEMPOS = ["desde ontem", "há quatro dias", "há duas semanas, indo e voltando"]
 
@@ -43,7 +46,7 @@ def cronometrar(obj, nome, lista):
 
 
 def chave_de(tri, q):
-    return cache_llm.chave(regras.normalizar(t.sem_dados_pessoais(q)), t.faixa_etaria(40), tri.modelo.model, t.VERSAO_PROMPT, tri._versao_base)
+    return cache_llm.chave(regras.normalizar(t.sem_dados_pessoais(q)), t.faixa_etaria(40), fabrica.nome(tri.modelo), t.VERSAO_PROMPT, tri._versao_base)
 
 
 def pct(l, p):
@@ -88,7 +91,7 @@ def main():
         sem.append((time.monotonic() - t0) * 1000)
         origens[q] = r["origem"]
         print(f"{i + 1}/30 {r['origem']} {sem[-1]:.0f} ms", flush=True)
-        time.sleep(RITMO if tri.protecao.circuito.estado == "FECHADO" else 31)
+        time.sleep((RITMO if GRATUITO else 0.2) if tri.protecao.circuito.estado == "FECHADO" else 31)
     ind = tri.indicadores()
     triagem = {"etapas": {"embedding": resumo(emb), "busca": resumo(busca), "modelo": resumo(modelo)}, "total": resumo(sem),
                "porModelo": resumo([x for x, q in zip(sem, queixas) if origens[q] == "LLM"]), "llm": sum(o == "LLM" for o in origens.values()), "indicadores": ind}
@@ -104,7 +107,7 @@ def main():
     rec, antes = [], tri.indicadores()
     por_modelo = 0
     for i, s in enumerate(SINTOMAS[:8]):
-        time.sleep(15 if tri.protecao.circuito.estado == "FECHADO" else 31)
+        time.sleep((15 if GRATUITO else 0.5) if tri.protecao.circuito.estado == "FECHADO" else 31)
         t0 = time.monotonic()
         r = tri.recomendar(f"{s} que piora à noite", 40, "ubs")
         rec.append((time.monotonic() - t0) * 1000)
@@ -113,17 +116,17 @@ def main():
     depois = tri.indicadores()
     ok = lambda x: x["chamadas"] - sum(x["falhasPorMotivo"].values())  # noqa: E731
     dif = {k: depois[k] - antes[k] for k in ("tokensEntrada", "tokensSaida", "chamadas")}
-    saida = {"modelo": m.model, "precoEntrada": PRECO_ENTRADA, "precoSaida": PRECO_SAIDA, "triagem": triagem, "cache": resumo(com), "circuitoAberto": resumo(aberto),
+    saida = {"modelo": fabrica.nome(m), "precoEntrada": PRECO_ENTRADA, "precoSaida": PRECO_SAIDA, "triagem": triagem, "cache": resumo(com), "circuitoAberto": resumo(aberto),
              "recomendacao": {"total": resumo(rec), "pelo modelo": por_modelo, **dif, "chamadasOk": ok(depois) - ok(antes)},
              "tokensPorTriagem": {"entrada": round(ind["tokensEntrada"] / max(1, ok(ind))), "saida": round(ind["tokensSaida"] / max(1, ok(ind)))}}
-    (AQUI / "latencia.json").write_text(json.dumps(saida, indent=1, ensure_ascii=False) + "\n")
+    (AQUI / ARQUIVO).write_text(json.dumps(saida, indent=1, ensure_ascii=False) + "\n")
     print(json.dumps(saida, indent=1, ensure_ascii=False))
 
 
 if len(sys.argv) > 1:  # so o cache, aproveitando as outras medidas
-    d = json.loads((AQUI / "latencia.json").read_text())
+    d = json.loads((AQUI / ARQUIVO).read_text())
     d["cache"] = resumo(medir_cache(Buscador(), fabrica.criar(), [f"{s} {q}" for q in TEMPOS for s in SINTOMAS]))
-    (AQUI / "latencia.json").write_text(json.dumps(d, indent=1, ensure_ascii=False) + "\n")
+    (AQUI / ARQUIVO).write_text(json.dumps(d, indent=1, ensure_ascii=False) + "\n")
     print(d["cache"])
 else:
     main()

@@ -2,6 +2,17 @@
 
 O modelo classifica a urgência da queixa a partir dos trechos recuperados pelo [RAG](rag-triagem.md) e ajuda a escolher um horário real. Não é um chatbot: são duas operações com entrada e saída definidas. O modelo **sugere**; não diagnostica nem prescreve.
 
+## Provedor
+
+O padrão é o **DeepSeek** (`deepseek-flash`, sem raciocínio); o **Gemini** (`gemini-3.5-flash-lite`) continua como alternativa. Os dois passam pelas mesmas chains, pela mesma tool e pela mesma proteção; muda só o cliente (`app/llm/modelo.py`).
+
+| Decisão | Motivo |
+|---------|--------|
+| DeepSeek como padrão | Nas 24 perguntas com gabarito acertou mais e respondeu dentro de 3,5 s em todas; o Gemini gratuito oscilou (2 de 5 chamadas falharam em 24/11). Comparação em [`llm-latencia-custo.md`](../llm-latencia-custo.md) e [`rag-avaliacao.md`](../rag-avaliacao.md) |
+| Sem raciocínio | Medimos os esforços low, high e max: 2 a 3 vezes mais lentos, sem acertar mais |
+| Saída estruturada por chamada de função | O DeepSeek aceita chamada de função com a ferramenta escolhida só sem raciocínio, e é o mesmo mecanismo da tool |
+| Gemini mantido | Troca por variável, sem mexer no código; serve de plano B se um dos provedores cair |
+
 ## Chains (LangChain)
 
 - **A. Classificação:** `POST /triagens`, passo 1 da SAGA.
@@ -47,9 +58,9 @@ flowchart LR
 | Fallback | Regras com os mesmos trechos (`origem: REGRAS`); na recomendação, consulta direta à agenda |
 
 Detalhes que os testes cobrem:
-- O SDK repetiria até 6 vezes por dentro; está desligado, e o teste conta os pedidos que chegam ao servidor.
+- Os SDKs repetiriam por dentro (o do Gemini, até 6 vezes); está desligado nos dois, e o teste conta os pedidos que chegam ao servidor.
 - O limite de cada tentativa inclui a resolução de nome, que o timeout do cliente HTTP não cobre.
-- O SDK repassa o timeout como prazo do servidor; ele fica fixo em 10 s, para o provedor não recusar 3,5 s.
+- O SDK do Gemini repassa o timeout como prazo do servidor; ele fica fixo em 10 s, para o provedor não recusar 3,5 s.
 - Sem trechos recuperados, a resposta não vai para o cache.
 
 `GET /triagens/saude-llm` mostra circuito, latência, tokens, cache, fallbacks e falhas por motivo da réplica que respondeu.
@@ -58,19 +69,21 @@ Detalhes que os testes cobrem:
 
 | Variável | Uso |
 |----------|-----|
-| `GEMINI_API_KEY` | Chave do Google AI Studio. Vazia: a triagem trabalha por regras |
-| `LLM_MODELO` | Padrão `gemini-3.5-flash-lite` |
+| `DEEPSEEK_API_KEY` | Chave do DeepSeek (padrão do projeto) |
+| `GEMINI_API_KEY` | Chave do Google AI Studio (alternativa). Sem nenhuma das duas, a triagem trabalha por regras |
+| `LLM_PROVEDOR` | `deepseek` ou `gemini`. Vazio: o DeepSeek, se houver a chave dele |
+| `LLM_MODELO` | Padrão `deepseek-flash` ou `gemini-3.5-flash-lite` |
 | `LLM_URL` | Endereço alternativo da API (usado nos testes) |
 
-A chave fica no `.env` local, nunca no repositório. Na camada gratuita o provedor pode usar o conteúdo enviado para melhorar os próprios produtos: **usar só dados fictícios**.
+As chaves ficam no `.env` local, nunca no repositório. Os servidores do DeepSeek ficam na China, e na camada gratuita do Gemini o provedor pode usar o conteúdo enviado para melhorar os próprios produtos. Com dado real de paciente, os dois exigiriam base legal para transferência internacional (LGPD): **usar só dados fictícios**.
 
 ```bash
 scripts/verificar_llm.sh   # prova tudo acima na stack real, sem chave (~3 min)
 ```
 
-O script e os testes usam o cliente real do Gemini contra um [servidor falso](../../services/triagem/tests/gemini_falso.py) que fala a mesma API: provam a integração e as falhas, **não a qualidade do modelo**, medida em [`rag-avaliacao.md`](../rag-avaliacao.md).
+Os testes rodam com os clientes reais do DeepSeek e do Gemini contra um [servidor falso](../../services/triagem/tests/gemini_falso.py) que fala as duas APIs; o script usa o do Gemini. Provam a integração e as falhas, **não a qualidade do modelo**, medida em [`rag-avaliacao.md`](../rag-avaliacao.md).
 
 ## Limitações
-- A camada gratuita permite 15 chamadas por minuto e oscila: há picos de demora e erros 503. Medidas em [`llm-latencia-custo.md`](../llm-latencia-custo.md).
+- O provedor externo pode ficar lento ou fora (o Gemini gratuito, com 15 chamadas por minuto, oscilou bastante). Medidas em [`llm-latencia-custo.md`](../llm-latencia-custo.md).
 - Circuito e indicadores são por réplica e zeram ao reiniciar.
 - A lista de sinais de alarme é do grupo, sem validação clínica, e não reconhece toda forma de descrever um sintoma: sozinhas, as regras são bem mais fracas que o modelo ([avaliação](../rag-avaliacao.md)).

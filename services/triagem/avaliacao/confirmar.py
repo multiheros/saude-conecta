@@ -18,7 +18,7 @@ protecao.TENTATIVA_S, t.TETO_S = 25.0, 60.0  # mede a resposta, nao a resilienci
 
 def main():
     b, linhas = Buscador(), []
-    modelo = fabrica.criar().model_copy(update={"timeout": 25.0})
+    modelo = fabrica.criar(prazo=25.0)
     for p in json.loads((AQUI / "confirmacao.json").read_text()):
         for _ in range(8):
             b._pausado_ate = 0.0
@@ -31,7 +31,7 @@ def main():
                        "justificativa": r["justificativa"], "fontes": r["fontes"]})
         print(p["id"], p["nivel"], r["origem"], r["classificacao"], "| regras:", so_regras, "|", r["justificativa"][:150], flush=True)
         time.sleep(5)
-    (AQUI / "confirmacao-resultado.json").write_text(json.dumps(linhas, indent=1, ensure_ascii=False) + "\n")
+    (AQUI / f"confirmacao-resultado{fabrica.sufixo()}.json").write_text(json.dumps(linhas, indent=1, ensure_ascii=False) + "\n")
     N = regras.NIVEIS.index
     for nome, k in (("producao", "producao"), ("so regras", "regras")):
         menos = sum(N(x[k]) > max(map(N, x["esperado"])) for x in linhas)

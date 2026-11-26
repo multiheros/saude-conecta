@@ -176,7 +176,7 @@ O **SaúdeConecta** é uma plataforma de **agendamento inteligente e triagem ass
 | Serviços de domínio | Python (FastAPI) + Node.js (Express) |
 | Bancos de dados | PostgreSQL · MongoDB · Redis · ChromaDB |
 | Mensageria | RabbitMQ (topic exchange + DLQ) |
-| IA | LLM (Gemini Flash-Lite) + RAG (LangChain + ChromaDB, embeddings locais) |
+| IA | LLM (DeepSeek Flash; Gemini como alternativa) + RAG (LangChain + ChromaDB, embeddings locais) |
 | API Gateway / BFFs | Kong + 2 BFFs (web e admin) |
 | Frontends | React (app do paciente + painel do gestor) |
 | Infra | Docker + Docker Compose + Kubernetes |
@@ -228,7 +228,7 @@ docker compose up -d --build
 
 Para subir depois sem internet e sem depender do Docker Hub: `scripts/preparar.sh` uma vez e, dali em diante, `docker compose up -d --no-build`.
 
-Para usar o LLM na triagem, copie `.env.example` para `.env` e preencha `GEMINI_API_KEY` antes de subir. Sem a chave, a triagem funciona por regras.
+Para usar o LLM na triagem, copie `.env.example` para `.env` e preencha `DEEPSEEK_API_KEY` (ou `GEMINI_API_KEY`) antes de subir. Sem chave, a triagem funciona por regras.
 
 Entrada única pelo gateway:
 
@@ -262,7 +262,7 @@ docker compose down -v     # para e apaga os volumes
 scripts/k8s-subir.sh     # cluster kind, Ingress, imagens, chaves e manifestos; http://localhost:8081
 ```
 
-Com um comando: cria o cluster se não existir, constrói e carrega as imagens, gera as chaves do JWT e espera tudo ficar pronto. Se houver `GEMINI_API_KEY` no `.env`, cria o Secret do LLM. `CLUSTER=` e `PORTA=` mudam o nome e a porta.
+Com um comando: cria o cluster se não existir, constrói e carrega as imagens, gera as chaves do JWT e espera tudo ficar pronto. Se houver `DEEPSEEK_API_KEY` ou `GEMINI_API_KEY` no `.env`, cria o Secret do LLM. `CLUSTER=` e `PORTA=` mudam o nome e a porta.
 
 ### Provas
 

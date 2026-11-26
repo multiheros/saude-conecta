@@ -17,8 +17,6 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-
 from app import triador as t
 from app.llm import modelo as fabrica
 from app.rag import base
@@ -26,8 +24,9 @@ from app.rag.busca import Buscador
 from app.regras import NIVEIS
 
 AQUI = Path(os.getenv("AVALIACAO_DIR", Path(__file__).parent))
-SAIDA = AQUI / "resultados.jsonl"
-EXECUCOES, RITMO = 3, 4.5  # segundos entre chamadas: 15 por minuto
+SAIDA = AQUI / f"resultados{fabrica.sufixo()}.jsonl"
+# segundos entre chamadas: o Gemini gratuito aceita 15 por minuto; o DeepSeek nao limita por minuto
+EXECUCOES, RITMO = 3, 4.5 if fabrica.provedor() == "gemini" else 0.2
 CONDICOES = ("sem", "caderno", "completo")
 
 
@@ -46,8 +45,7 @@ def coletar():
     feitos = {(r["id"], r["condicao"], r["execucao"]) for r in ler()} if SAIDA.exists() else set()
     b = Buscador()
     assert b.buscar("dor no peito"), "base de conhecimento fora do ar"
-    m: ChatGoogleGenerativeAI = fabrica.criar()
-    m = m.model_copy(update={"timeout": 30.0})
+    m = fabrica.criar(prazo=30.0)
     secoes = {x["secao"]: x["texto"] for x in base.blocos() if x["pagina"] is None}
     prompt = t.CLASSIFICAR.partial(escala=secoes["Escala de cinco níveis e prazos"], especialidades=secoes["Especialidade indicada"])
     cadeia = m.with_structured_output(t.Classificacao, include_raw=True)
@@ -88,7 +86,7 @@ def coletar():
                         "id": p["id"], "condicao": condicao, "execucao": execucao, "ms": round((time.monotonic() - t0) * 1000),
                         "nivel": s.classificacao, "especialidade": s.especialidade, "justificativa": s.justificativa, "confianca": s.confianca,
                         "trechos": s.trechos, "recuperados": [{k: x[k] for k in ("documento", "secao", "pagina", "similaridade")} for x in trechos],
-                        "entrada": uso["input_tokens"], "saida": uso["output_tokens"], "modelo": m.model, "base": base.versao(), "prompt": t.VERSAO_PROMPT,
+                        "entrada": uso["input_tokens"], "saida": uso["output_tokens"], "modelo": fabrica.nome(m), "base": base.versao(), "prompt": t.VERSAO_PROMPT,
                     }, ensure_ascii=False) + "\n")
                     f.flush()
                     feitos.add((p["id"], condicao, execucao))
