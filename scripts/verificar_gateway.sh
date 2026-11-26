@@ -9,7 +9,7 @@
 # Uso: scripts/verificar_gateway.sh      (~3 min; usa a porta 18080)
 set -uo pipefail
 cd "$(dirname "$0")/.."
-export GEMINI_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
+export GEMINI_API_KEY= DEEPSEEK_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
 BUILD=--build; [ -n "${SEM_BUILD:-}" ] && BUILD=--no-build # SEM_BUILD=1: usa as imagens ja prontas
 export COMPOSE_PROJECT_NAME=saudeconecta-gateway GATEWAY_PORTA=${GATEWAY_PORTA:-18080} LIMITE_POR_MINUTO=5000 CACHE_SEGUNDOS=0
 G=http://127.0.0.1:$GATEWAY_PORTA

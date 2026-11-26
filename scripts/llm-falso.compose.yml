@@ -6,4 +6,4 @@ services:
     volumes: ["./services/triagem/tests:/falso:ro"]
     networks: [backend]
   triagem:
-    environment: { GEMINI_API_KEY: falsa, LLM_URL: "http://gemini-falso:9000" }
+    environment: { GEMINI_API_KEY: falsa, DEEPSEEK_API_KEY: "", LLM_PROVEDOR: gemini, LLM_URL: "http://gemini-falso:9000" }

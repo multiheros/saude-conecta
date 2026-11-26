@@ -6,7 +6,7 @@
 # Os registros ficam em ${REGISTROS:-/tmp/saudeconecta-e2e}. Nao precisa de chave do LLM.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-export GEMINI_API_KEY= # as provas nao gastam cota, mesmo com .env preenchido
+export GEMINI_API_KEY= DEEPSEEK_API_KEY= # as provas nao gastam cota, mesmo com .env preenchido
 R=${REGISTROS:-/tmp/saudeconecta-e2e}; mkdir -p "$R"
 PROVAS=("$@"); [ $# -gt 0 ] || PROVAS=(testes isolamento outbox saga cqrs rag llm gateway telas offline)
 

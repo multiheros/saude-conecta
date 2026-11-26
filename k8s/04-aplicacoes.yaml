@@ -134,6 +134,8 @@ spec:
             - name: CHROMA_HOST
               valueFrom: { configMapKeyRef: { name: saudeconecta-config, key: TRIAGEM_VETORES_HOST } }
             # Criado a mao, nunca versionado (docs/containerizacao.md). Sem ele, a triagem trabalha por regras.
+            - name: DEEPSEEK_API_KEY
+              valueFrom: { secretKeyRef: { name: triagem-llm, key: DEEPSEEK_API_KEY, optional: true } }
             - name: GEMINI_API_KEY
               valueFrom: { secretKeyRef: { name: triagem-llm, key: GEMINI_API_KEY, optional: true } }
             - name: DB_HOST

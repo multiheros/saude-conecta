@@ -30,7 +30,7 @@ As cenas 2, 3 e 5 também podem ser vistas nas telas: `http://localhost:8080` e 
 |----------|-------|
 | Sem internet | Tudo sobe e funciona com as imagens prontas; a triagem responde por regras, com fontes (`scripts/verificar_offline.sh` prova) |
 | Provedor do LLM lento ou fora | As queixas aquecidas vêm do cache; as demais, por regras |
-| Limite do provedor gratuito (15 chamadas por minuto) | Uma triagem nova usa 3; espere um minuto ou use uma queixa aquecida |
+| Um provedor do LLM fora por muito tempo | Troque para o outro: `LLM_PROVEDOR=gemini docker compose up -d --no-build triagem` (ou `deepseek`), com as duas chaves no `.env` |
 | Limite do gateway (100 por minuto) | `LIMITE_POR_MINUTO=1000 docker compose up -d --no-build gateway` |
 | Recomeçar do zero | `docker compose down -v`, subir e aquecer de novo |
 

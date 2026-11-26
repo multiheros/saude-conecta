@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from . import regras
 from .llm import cache as cache_llm
+from .llm import modelo as modelo_llm
 from .llm.ferramenta import Agenda, AgendaIndisponivel, consultar_horarios
 from .llm.protecao import LLMIndisponivel, Protecao, RespostaInvalida
 from .rag import base
@@ -124,7 +125,7 @@ class Triador:
     def classificar(self, sintomas: str, idade: int | None = None, inicio: float | None = None) -> dict:
         prazo = (inicio or time.monotonic()) + TETO_S
         queixa, faixa = sem_dados_pessoais(sintomas), faixa_etaria(idade)
-        k = self.modelo and cache_llm.chave(regras.normalizar(queixa), faixa, self.modelo.model, VERSAO_PROMPT, self._versao_base)
+        k = self.modelo and cache_llm.chave(regras.normalizar(queixa), faixa, modelo_llm.nome(self.modelo), VERSAO_PROMPT, self._versao_base)
         guardado = k and self.cache and self.cache.ler(k)
         if guardado:
             self.protecao.contar("acertosCache")
@@ -245,5 +246,6 @@ class Triador:
         return {"horarios": livres[:3], "orientacao": ORIENTACAO, "origemHorarios": "REGRAS"}
 
     def indicadores(self) -> dict:
-        return {"habilitado": self.modelo is not None, "modelo": self.modelo.model if self.modelo else None} | self.protecao.indicadores()
+        return {"habilitado": self.modelo is not None, "modelo": modelo_llm.nome(self.modelo) if self.modelo else None,
+                "provedor": modelo_llm.de(self.modelo) if self.modelo else None} | self.protecao.indicadores()
 

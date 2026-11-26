@@ -83,7 +83,7 @@ Credenciais vêm de variáveis de ambiente com valores padrão de desenvolviment
 A chave do LLM é opcional e criada à mão, sem passar pelo repositório:
 
 ```bash
-kubectl -n saudeconecta create secret generic triagem-llm --from-literal=GEMINI_API_KEY=SUA_CHAVE
+kubectl -n saudeconecta create secret generic triagem-llm --from-literal=DEEPSEEK_API_KEY=SUA_CHAVE   # ou GEMINI_API_KEY
 kubectl -n saudeconecta rollout restart deploy/triagem
 ```
 

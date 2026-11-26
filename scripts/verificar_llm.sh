@@ -10,7 +10,7 @@
 # Uso: scripts/verificar_llm.sh      (~3 min)
 set -uo pipefail
 cd "$(dirname "$0")/.."
-export GEMINI_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
+export GEMINI_API_KEY= DEEPSEEK_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
 BUILD=--build; [ -n "${SEM_BUILD:-}" ] && BUILD=--no-build # SEM_BUILD=1: usa as imagens ja prontas
 export COMPOSE_PROJECT_NAME=saudeconecta-llm COMPOSE_FILE=docker-compose.yml:scripts/llm-falso.compose.yml
 dc() { docker compose "$@" 2>/dev/null; }

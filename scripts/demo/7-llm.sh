@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Cena 7: o provedor do LLM some. Circuito abre, o fallback responde e a SAGA conclui.
 . "$(dirname "$0")/_comum.sh"
-HOST=generativelanguage.googleapis.com
 religar() { dc exec -T -u root triagem sh -c "sed '/$HOST/d' /etc/hosts > /tmp/h && cat /tmp/h > /etc/hosts" >/dev/null; }
 trap religar EXIT
 saude() { ges GET /admin/v1/saude-ia | bonito "$1"; }
+HOST=$( [ "$(saude j.provedor)" = gemini ] && echo generativelanguage.googleapis.com || echo api.deepseek.com )
 n "Cena 7. LLM como dependencia falivel"
 igual "LLM habilitado (chave no .env)" "$(saude j.habilitado)" true
+echo "  provedor $(saude j.provedor), modelo $(saude j.modelo)"
 passo "Com o provedor no ar"
 T0=$(date +%s%3N); R=$(pac POST /web/v1/triagem '{"sintomas":"dor de dente leve ao mastigar ha dois dias"}'); echo "  origem $(campo origem <<< "$R"), $(( $(date +%s%3N) - T0 )) ms"
 pausa

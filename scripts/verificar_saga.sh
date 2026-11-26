@@ -8,7 +8,7 @@
 # Uso: scripts/verificar_saga.sh
 set -uo pipefail
 cd "$(dirname "$0")/.."
-export GEMINI_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
+export GEMINI_API_KEY= DEEPSEEK_API_KEY= # a prova nao gasta a cota do provedor, mesmo com .env preenchido
 BUILD=--build; [ -n "${SEM_BUILD:-}" ] && BUILD=--no-build # SEM_BUILD=1: usa as imagens ja prontas
 export COMPOSE_PROJECT_NAME=saudeconecta-saga
 dc() { docker compose "$@" 2>/dev/null; }
